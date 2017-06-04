@@ -15,7 +15,7 @@ from utils.transforms import *
 
 def main():
     training_batch_size = 16
-    validation_batch_size = 64
+    validation_batch_size = 16
     epoch_num = 200
     iter_freq_print_training_log = 350
     lr = 1e-4
@@ -90,6 +90,8 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
+        if i > 10:
+            break
 
         if (i + 1) % iter_freq_print_training_log == 0:
             print '[epoch %d], [iter %d], [training batch loss %.4f]' % (epoch + 1, i + 1, loss.data[0])
@@ -107,7 +109,7 @@ def validate(epoch, val_loader, net, criterion, restore):
     for vi, data in enumerate(val_loader, 0):
         inputs, labels = data
         inputs = Variable(inputs, volatile=True).cuda()
-        labels = Variable(labels.float(), volatile=True).cuda()
+        labels = Variable(labels, volatile=True).cuda()
 
         outputs = net(inputs)
 
@@ -115,14 +117,14 @@ def validate(epoch, val_loader, net, criterion, restore):
         batch_outputs.append(outputs)
         batch_labels.append(labels)
 
-    batch_inputs = torch.cat(batch_inputs)
-    batch_outputs = torch.cat(batch_outputs)
-    batch_labels = torch.cat(batch_labels)
+    batch_inputs = torch.cat(batch_inputs).cpu()
+    batch_outputs = torch.cat(batch_outputs).cpu()
+    batch_labels = torch.cat(batch_labels).cpu()
     val_loss = criterion(batch_outputs, batch_labels)
     val_loss = val_loss.data[0]
 
-    batch_inputs = batch_inputs.cpu().data
-    batch_outputs = batch_outputs.cpu().data
+    batch_inputs = batch_inputs.data
+    batch_outputs = batch_outputs.data
     batch_prediction = batch_outputs.max(1)[1].squeeze_(1)
     to_save_dir = os.path.join(ckpt_path, str(epoch + 1))
     os.mkdir(to_save_dir)
