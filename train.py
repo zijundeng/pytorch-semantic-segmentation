@@ -15,7 +15,7 @@ from utils.transforms import *
 
 def main():
     training_batch_size = 16
-    validation_batch_size = 16
+    validation_batch_size = 32
     epoch_num = 200
     iter_freq_print_training_log = 350
     lr = 1e-4
@@ -90,18 +90,12 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        if i > 10:
-            break
 
         if (i + 1) % iter_freq_print_training_log == 0:
             print '[epoch %d], [iter %d], [training batch loss %.4f]' % (epoch + 1, i + 1, loss.data[0])
 
 
 def validate(epoch, val_loader, net, criterion, restore):
-    epoch_dir = os.path.join(ckpt_path, str(epoch + 1))
-    if not os.path.exists(epoch_dir):
-        os.mkdir(epoch_dir)
-
     net.eval()
     batch_inputs = []
     batch_outputs = []
@@ -113,21 +107,24 @@ def validate(epoch, val_loader, net, criterion, restore):
 
         outputs = net(inputs)
 
-        batch_inputs.append(inputs)
-        batch_outputs.append(outputs)
-        batch_labels.append(labels)
+        batch_inputs.append(inputs.cpu())
+        batch_outputs.append(outputs.cpu())
+        batch_labels.append(labels.cpu())
 
-    batch_inputs = torch.cat(batch_inputs).cpu()
-    batch_outputs = torch.cat(batch_outputs).cpu()
-    batch_labels = torch.cat(batch_labels).cpu()
+    batch_inputs = torch.cat(batch_inputs)
+    batch_outputs = torch.cat(batch_outputs)
+    batch_labels = torch.cat(batch_labels)
     val_loss = criterion(batch_outputs, batch_labels)
     val_loss = val_loss.data[0]
 
     batch_inputs = batch_inputs.data
     batch_outputs = batch_outputs.data
     batch_prediction = batch_outputs.max(1)[1].squeeze_(1)
+
     to_save_dir = os.path.join(ckpt_path, str(epoch + 1))
-    os.mkdir(to_save_dir)
+    if not os.path.exists(to_save_dir):
+        os.mkdir(to_save_dir)
+
     for idx, tensor in enumerate(zip(batch_inputs, batch_prediction)):
         pil_input = restore(tensor[0])
         # tensor[1][tensor[1] > 0] = 255
