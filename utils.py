@@ -1,10 +1,9 @@
+import math
 import random
 from PIL import Image
-from torch import nn
-import math
-import collections
 
 import torch.nn.functional as F
+from torch import nn
 from torch.nn.modules.loss import _WeightedLoss, _assert_no_grad
 
 
@@ -61,3 +60,5 @@ def initialize_weights(*models):
                 n = module.weight.size(1)
                 module.weight.data.normal_(0, math.sqrt(2. / n))
                 module.bias.data.zero_()
+
+

@@ -6,7 +6,7 @@ from torchvision import transforms
 
 from configuration import *
 from datasets import VOC
-from models.fcn32 import VGG
+from models import FCN8VGG
 from utils import *
 
 tensor_to_pil = transforms.ToPILImage()
@@ -18,14 +18,14 @@ def main():
     iter_freq_print_training_log = 500
     lr = 1e-2
 
-    # net = VGG(pretrained=True, num_classes=num_classes).cuda()
-    # curr_epoch = 0
+    net = FCN8VGG(pretrained=True, num_classes=num_classes).cuda()
+    curr_epoch = 0
 
-    net = VGG(pretrained=False, num_classes=num_classes).cuda()
-    snapshot = 'epoch_100_iter_500_loss_0.1211.pth'
-    net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
-    split_res = snapshot.split('_')
-    curr_epoch = int(split_res[1])
+    # net = FCN8VGG(pretrained=False, num_classes=num_classes).cuda()
+    # snapshot = 'epoch_100_iter_500_loss_0.1211.pth'
+    # net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
+    # split_res = snapshot.split('_')
+    # curr_epoch = int(split_res[1])
 
     net.train()
 

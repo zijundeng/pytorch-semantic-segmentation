@@ -74,3 +74,4 @@ class FCN32DenseNet(_FCN32Base):
 # outputs = net(inputs)
 # print time.time() - a
 # print outputs.size()
+# print models.densenet201()
