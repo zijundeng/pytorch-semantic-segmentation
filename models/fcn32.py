@@ -4,7 +4,7 @@ from torch import nn
 from torchvision import models
 
 from configuration import pretrained_vgg19, pretrained_res152, pretrained_dense201
-from utils import initialize_weights
+from utils.training import initialize_weights
 
 
 class _FCN32Base(nn.Module):
@@ -66,12 +66,12 @@ class FCN32DenseNet(_FCN32Base):
         initialize_weights(self.fconv5)
 
 
-# from torch.autograd import Variable
-# import time
-# net = FCN32DenseNet(pretrained=True, num_classes=21).cuda()
-# inputs = Variable(torch.randn((8, 3, 512, 320))).cuda()
-# a = time.time()
-# outputs = net(inputs)
-# print time.time() - a
-# print outputs.size()
-# print models.densenet201()
+        # from torch.autograd import Variable
+        # import time
+        # net = FCN32DenseNet(pretrained=True, num_classes=21).cuda()
+        # inputs = Variable(torch.randn((8, 3, 512, 320))).cuda()
+        # a = time.time()
+        # outputs = net(inputs)
+        # print time.time() - a
+        # print outputs.size()
+        # print models.densenet201()

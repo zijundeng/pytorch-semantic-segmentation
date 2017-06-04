@@ -4,7 +4,7 @@ from torch import nn
 from torchvision import models
 
 from configuration import pretrained_vgg19, pretrained_res152, pretrained_dense201
-from utils import initialize_weights
+from utils.training import initialize_weights
 
 
 class _FCN16Base(nn.Module):
