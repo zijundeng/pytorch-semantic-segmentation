@@ -9,7 +9,7 @@ from configuration import train_path, val_path, num_classes, ckpt_path
 from datasets import VOC
 from models import FCN8VGG
 from utils.loss import CrossEntropyLoss2d
-from utils.training import adjust_lr
+from utils.training import adjust_lr, colorize_mask
 from utils.transforms import *
 
 
@@ -18,13 +18,13 @@ def main():
     validation_batch_size = 32
     epoch_num = 200
     iter_freq_print_training_log = 200
-    lr = 1e-3
+    lr = 1e-4
 
     # net = FCN8VGG(pretrained=True, num_classes=num_classes).cuda()
     # curr_epoch = 0
 
     net = FCN8VGG(pretrained=False, num_classes=num_classes).cuda()
-    snapshot = 'epoch_2_validation_loss_3.7136.pth'
+    snapshot = 'epoch_6_validation_loss_3.5477.pth'
     net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
     split_res = snapshot.split('_')
     curr_epoch = int(split_res[1])
@@ -127,8 +127,7 @@ def validate(epoch, val_loader, net, criterion, restore):
 
     for idx, tensor in enumerate(zip(batch_inputs, batch_prediction)):
         pil_input = restore(tensor[0])
-        tensor[1][tensor[1] > 0] = 255
-        pil_output = Image.fromarray(tensor[1].numpy().astype('uint8'), 'P')
+        pil_output = Image.fromarray(colorize_mask(tensor[1].numpy()), 'RGB')
         pil_input.save(os.path.join(to_save_dir, '%d_img.png' % idx))
         pil_output.save(os.path.join(to_save_dir, '%d_out.png' % idx))
 
