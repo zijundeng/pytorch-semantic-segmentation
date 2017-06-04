@@ -6,7 +6,7 @@ from torchvision import transforms
 
 from configuration import *
 from datasets import VOC
-from models.vanilla_fcn import VGG
+from models.fcn32 import VGG
 from utils import *
 
 tensor_to_pil = transforms.ToPILImage()
@@ -18,7 +18,15 @@ def main():
     iter_freq_print_training_log = 500
     lr = 1e-2
 
-    net = VGG(pretrained=True, num_classes=num_classes).cuda()
+    # net = VGG(pretrained=True, num_classes=num_classes).cuda()
+    # curr_epoch = 0
+
+    net = VGG(pretrained=False, num_classes=num_classes).cuda()
+    snapshot = 'epoch_100_iter_500_loss_0.1211.pth'
+    net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
+    split_res = snapshot.split('_')
+    curr_epoch = int(split_res[1])
+
     net.train()
 
     transform = transforms.Compose([
@@ -37,11 +45,12 @@ def main():
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
 
-    for epoch in range(0, epoch_num):
+    for epoch in range(curr_epoch, epoch_num):
         train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, de_normalize)
         if (epoch + 1) % 8 == 0:
             lr /= 2
-            optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, nesterov=True)
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
 
 
 def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log, de_normalize):
@@ -55,7 +64,7 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
 
         optimizer.zero_grad()
         outputs = net(inputs)
-        loss = criterion(outputs, labels)
+        loss = criterion(outputs, labels, ignore_label=255)
         loss.backward()
         optimizer.step()
 
