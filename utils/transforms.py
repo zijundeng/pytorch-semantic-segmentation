@@ -90,7 +90,7 @@ class SimultaneousRandomFlip(object):
         if random.random() < 0.5:
             return img1.transpose(Image.FLIP_LEFT_RIGHT), img2.transpose(Image.FLIP_LEFT_RIGHT)
         if random.random() < 0.5:
-            return img1.transpose(Image.FLIP_TOP_BOTTOM), img2.transpose(Image.FLIP_LEFT_RIGHT)
+            return img1.transpose(Image.FLIP_TOP_BOTTOM), img2.transpose(Image.FLIP_TOP_BOTTOM)
         return img1, img2
 
 
