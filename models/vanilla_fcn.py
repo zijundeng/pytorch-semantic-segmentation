@@ -1,3 +1,5 @@
+import math
+
 import torch
 from torch import nn
 from torchvision import models
@@ -5,8 +7,24 @@ from torchvision import models
 from configuration import *
 
 
+def _initialize_weights(self):
+    for m in self.modules():
+        if isinstance(m, nn.Conv2d):
+            n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            m.weight.data.normal_(0, math.sqrt(2. / n))
+            if m.bias is not None:
+                m.bias.data.zero_()
+        elif isinstance(m, nn.BatchNorm2d):
+            m.weight.data.fill_(1)
+            m.bias.data.zero_()
+        elif isinstance(m, nn.Linear):
+            n = m.weight.size(1)
+            m.weight.data.normal_(0, math.sqrt(2. / n))
+            m.bias.data.zero_()
+
+
 class VGG(nn.Module):
-    def __init__(self, pretrained=True, num_classes=21):
+    def __init__(self, pretrained, num_classes):
         super(VGG, self).__init__()
         vgg = models.vgg19()
         if pretrained:
@@ -20,8 +38,9 @@ class VGG(nn.Module):
             nn.ReLU(True),
             nn.Dropout(),
             nn.Conv2d(4096, num_classes, kernel_size=1),
-            nn.ConvTranspose2d(num_classes, num_classes, kernel_size=32, stride=32)
+            nn.ConvTranspose2d(num_classes, num_classes, kernel_size=96, stride=96)
         )
+        _initialize_weights(self.classifier)
 
     def forward(self, x):
         x = self.features(x)
@@ -31,7 +50,7 @@ class VGG(nn.Module):
 
 class Inception(nn.Module):
     # it is hard to keep the output size of inception unchanged and hence inception is not convenient
-    def __init__(self, pretrained=True, num_classes=21):
+    def __init__(self, pretrained, num_classes):
         super(Inception, self).__init__()
         inception = models.inception_v3()
         if pretrained:
@@ -55,7 +74,7 @@ class Inception(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, pretrained=True, num_classes=21):
+    def __init__(self, pretrained, num_classes):
         super(ResNet, self).__init__()
         res = models.resnet152()
         if pretrained:
@@ -75,7 +94,7 @@ class ResNet(nn.Module):
 
 
 class DenseNet(nn.Module):
-    def __init__(self, pretrained=True, num_classes=21):
+    def __init__(self, pretrained, num_classes):
         super(DenseNet, self).__init__()
         dense = models.densenet201()
         if pretrained:
