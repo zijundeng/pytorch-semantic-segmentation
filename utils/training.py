@@ -35,13 +35,30 @@ label_colors = [(0, 0, 0), (128, 0, 0), (0, 128, 0), (128, 128, 0), (0, 0, 128),
 # 12=dog, 13=horse, 14=motorbike, 15=person # 16=potted plant, 17=sheep, 18=sofa, 19=train, 20=tv/monitor
 
 
-def colorize_mask(mask):
+def colorize_mask(mask, ignored_label):
     mask = mask.astype(np.uint8)
     h, w = mask.shape
     cmap = np.zeros((h, w, 3))
 
     for i in xrange(h):
         for j in xrange(w):
-            cmap[i, j, :] = label_colors[mask[i, j]]
+            v = mask[i, j]
+            if v == ignored_label:
+                continue
+            cmap[i, j, :] = label_colors[v]
 
     return cmap.astype(np.uint8)
+
+
+def calculate_mean_iu(predictions, gts, num_classes):
+    sum_iu = 0
+    for i in xrange(num_classes):
+        n_ii = t_i = sum_n_ji = 0
+        for p, gt in zip(predictions, gts):
+            n_ii += np.sum(gt[p == i] == i)
+            t_i += np.sum(gt == i)
+            sum_n_ji += np.sum(p == i)
+        sum_iu += float(n_ii) / (t_i + sum_n_ji - n_ii)
+    mean_iu = sum_iu / num_classes
+    return mean_iu
+

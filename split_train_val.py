@@ -12,7 +12,7 @@ def rmrf_mkdir(dir_name):
     os.mkdir(dir_name)
 
 
-val_percentage = 0.05
+val_percentage = 0.02
 
 img_list = [os.path.splitext(img)[0] for img in os.listdir(voc_mask_dir_path)]
 img_list = np.random.permutation(img_list)

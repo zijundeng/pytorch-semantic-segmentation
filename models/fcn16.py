@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
-from configuration import pretrained_vgg19, pretrained_res152, pretrained_dense201
+from configuration import pretrained_vgg19_bn, pretrained_res152, pretrained_dense201
 from utils.training import initialize_weights
 
 
@@ -30,10 +30,11 @@ class FCN16VGG(_FCN16Base):
         super(FCN16VGG, self).__init__()
         vgg = models.vgg19()
         if pretrained:
-            vgg.load_state_dict(torch.load(pretrained_vgg19))
+            vgg.load_state_dict(torch.load(pretrained_vgg19_bn))
         features = list(vgg.features.children())
-        self.features4 = nn.Sequential(*features[0:28])
-        self.features5 = nn.Sequential(*features[28:])
+        features[0].padding = 100
+        self.features4 = nn.Sequential(*features[0:40])
+        self.features5 = nn.Sequential(*features[40:])
         self.fconv4 = nn.Conv2d(512, num_classes, kernel_size=1)
         self.fconv5 = nn.Sequential(
             nn.Conv2d(512, 4096, kernel_size=7),
@@ -53,6 +54,7 @@ class FCN16ResNet(_FCN16Base):
         res = models.resnet152()
         if pretrained:
             res.load_state_dict(torch.load(pretrained_res152))
+        res.conv1.padding = 100
         self.features4 = nn.Sequential(
             res.conv1, res.bn1, res.relu, res.maxpool, res.layer1, res.layer2, res.layer3
         )

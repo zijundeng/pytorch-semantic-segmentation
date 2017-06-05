@@ -16,7 +16,9 @@ class CrossEntropyLoss2d(_WeightedLoss):
             inputs = inputs.view(-1, c)
             targets = targets.view(-1)
         else:
-            inputs = inputs[targets.view(n, h, w, 1).repeat(1, 1, 1, c) != self.ignored_label].view(-1, c)
-            targets = targets[targets != self.ignored_label].view(-1)
+            # inputs = inputs[targets.view(n, h, w, 1).repeat(1, 1, 1, c) != self.ignored_label].view(-1, c)
+            useful_idx = targets != self.ignored_label
+            inputs = inputs[useful_idx.repeat(1, 1, 1, c)].view(-1, c)
+            targets = targets[useful_idx].view(-1)
 
         return F.cross_entropy(inputs, targets, self.weight, self.size_average)

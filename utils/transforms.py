@@ -85,12 +85,10 @@ class SimultaneousRandomCrop(object):
         return img1.crop((x1, y1, x1 + tw, y1 + th)), img2.crop((x1, y1, x1 + tw, y1 + th))
 
 
-class SimultaneousRandomFlip(object):
+class SimultaneousRandomHorizontallyFlip(object):
     def __call__(self, img1, img2):
         if random.random() < 0.5:
             return img1.transpose(Image.FLIP_LEFT_RIGHT), img2.transpose(Image.FLIP_LEFT_RIGHT)
-        if random.random() < 0.5:
-            return img1.transpose(Image.FLIP_TOP_BOTTOM), img2.transpose(Image.FLIP_TOP_BOTTOM)
         return img1, img2
 
 
