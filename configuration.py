@@ -8,7 +8,7 @@ The following paths in this block should be correctly referred
 pretrained_root = '/media/b3-542/LIBRARY/ZijunDeng/PyTorch Pretrained'  # should be correctly referred
 pretrained_res152 = os.path.join(pretrained_root, 'ResNet', 'resnet152-b121ed2d.pth')
 pretrained_inception_v3 = os.path.join(pretrained_root, 'Inception', 'inception_v3_google-1a9a5a14.pth')
-pretrained_vgg19_bn = os.path.join(pretrained_root, 'VggNet', 'vgg19-dcbb9e9d.pth')
+pretrained_vgg19_bn = os.path.join(pretrained_root, 'VggNet', 'vgg19_bn-c79401a0.pth')
 pretrained_dense201 = os.path.join(pretrained_root, 'DenseNet', 'densenet201-4c113574.pth')
 
 voc_dataset_root = '/home/b3-542/datasets/VOCdevkit/VOC2012'  # should be correctly referred

@@ -99,7 +99,7 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
 
         if (i + 1) % iter_freq_print_training_log == 0:
             prediction = outputs.data.max(1)[1].squeeze_(1).cpu().numpy()
-            mean_iu = calculate_mean_iu(prediction, labels.data.cpu().numpy(), num_classes)
+            mean_iu = calculate_mean_iu(prediction, labels.data.cpu().numpy(), num_classes, ignored_label)
             print '[epoch %d], [iter %d], [training batch loss %.4f], [mean_iu %.4f]' % (
                 epoch + 1, i + 1, loss.data[0], mean_iu)
 
@@ -131,7 +131,7 @@ def validate(epoch, val_loader, net, criterion, restore):
     batch_labels = batch_labels.data.numpy()
     batch_prediction = batch_outputs.max(1)[1].squeeze_(1).numpy()
 
-    mean_iu = calculate_mean_iu(batch_prediction, batch_labels, num_classes)
+    mean_iu = calculate_mean_iu(batch_prediction, batch_labels, num_classes, ignored_label)
 
     to_save_dir = os.path.join(ckpt_path, str(epoch + 1))
     if not os.path.exists(to_save_dir):
