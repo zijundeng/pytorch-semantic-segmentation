@@ -9,6 +9,10 @@ This repository contains some FCN-based models and the pipeline of training and 
 2. Run **split_train_val.py**.
 3. Run **train.py**.
 
+## Reference
+1. I have referred to some nice repositories: [1](https://github.com/bodokaiser/piwise),
+[2](https://github.com/ycszen/pytorch-ss)
+
 ## TODO
 1. SegNet
 2. PSPNet

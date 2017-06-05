@@ -35,11 +35,10 @@ class _FCN8Base(nn.Module):
 class FCN8VGG(_FCN8Base):
     def __init__(self, pretrained, num_classes):
         super(FCN8VGG, self).__init__()
-        vgg = models.vgg19()
+        vgg = models.vgg19_bn()
         if pretrained:
             vgg.load_state_dict(torch.load(pretrained_vgg19_bn))
         features = list(vgg.features.children())
-        features[0].padding = 100
         self.features3 = nn.Sequential(*features[0:27])
         self.features4 = nn.Sequential(*features[27:40])
         self.features5 = nn.Sequential(*features[40:])
@@ -63,7 +62,6 @@ class FCN8ResNet(_FCN8Base):
         res = models.resnet152()
         if pretrained:
             res.load_state_dict(torch.load(pretrained_res152))
-        res.conv1.padding = 100
         self.features3 = nn.Sequential(
             res.conv1, res.bn1, res.relu, res.maxpool, res.layer1, res.layer2
         )

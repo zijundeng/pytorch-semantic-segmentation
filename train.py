@@ -13,11 +13,11 @@ from utils.loss import CrossEntropyLoss2d
 from utils.training import colorize_mask, calculate_mean_iu
 from utils.transforms import *
 
-# cudnn.benchmark = True
+cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 6
+    training_batch_size = 8
     validation_batch_size = 8
     epoch_num = 200
     iter_freq_print_training_log = 250
@@ -27,7 +27,7 @@ def main():
     # curr_epoch = 0
 
     net = FCN8ResNet(pretrained=False, num_classes=num_classes).cuda()
-    snapshot = 'epoch_4_validation_loss_2.0800_mean_iu_0.3232.pth'
+    snapshot = 'epoch_6_validation_loss_1.6566_mean_iu_0.4934.pth'
     net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
     split_res = snapshot.split('_')
     curr_epoch = int(split_res[1])
@@ -96,12 +96,10 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        if i > 10:
-            break
 
         if (i + 1) % iter_freq_print_training_log == 0:
             prediction = outputs.data.max(1)[1].squeeze_(1).cpu().numpy()
-            mean_iu = calculate_mean_iu(prediction, labels.data.cpu().numpy(), num_classes, ignored_label)
+            mean_iu = calculate_mean_iu(prediction, labels.data.cpu().numpy(), num_classes)
             print '[epoch %d], [iter %d], [training batch loss %.4f], [mean_iu %.4f]' % (
                 epoch + 1, i + 1, loss.data[0], mean_iu)
 
@@ -133,7 +131,7 @@ def validate(epoch, val_loader, net, criterion, restore):
     batch_labels = batch_labels.data.numpy()
     batch_prediction = batch_outputs.max(1)[1].squeeze_(1).numpy()
 
-    mean_iu = calculate_mean_iu(batch_prediction, batch_labels, num_classes, ignored_label)
+    mean_iu = calculate_mean_iu(batch_prediction, batch_labels, num_classes)
 
     to_save_dir = os.path.join(ckpt_path, str(epoch + 1))
     if not os.path.exists(to_save_dir):

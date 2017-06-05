@@ -28,11 +28,10 @@ class _FCN16Base(nn.Module):
 class FCN16VGG(_FCN16Base):
     def __init__(self, pretrained, num_classes):
         super(FCN16VGG, self).__init__()
-        vgg = models.vgg19()
+        vgg = models.vgg19_bn()
         if pretrained:
             vgg.load_state_dict(torch.load(pretrained_vgg19_bn))
         features = list(vgg.features.children())
-        features[0].padding = 100
         self.features4 = nn.Sequential(*features[0:40])
         self.features5 = nn.Sequential(*features[40:])
         self.fconv4 = nn.Conv2d(512, num_classes, kernel_size=1)
@@ -54,7 +53,6 @@ class FCN16ResNet(_FCN16Base):
         res = models.resnet152()
         if pretrained:
             res.load_state_dict(torch.load(pretrained_res152))
-        res.conv1.padding = 100
         self.features4 = nn.Sequential(
             res.conv1, res.bn1, res.relu, res.maxpool, res.layer1, res.layer2, res.layer3
         )

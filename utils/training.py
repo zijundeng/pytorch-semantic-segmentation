@@ -50,10 +50,10 @@ def colorize_mask(mask, ignored_label):
     return cmap.astype(np.uint8)
 
 
-def calculate_mean_iu(predictions, gts, num_classes, ignored_label):
+def calculate_mean_iu(predictions, gts, num_classes):
     sum_iu = 0
     for i in xrange(num_classes):
-        n_ii = t_i = sum_n_ji = 0
+        n_ii = t_i = sum_n_ji = 1e-9
         for p, gt in zip(predictions, gts):
             n_ii += np.sum(gt[p == i] == i)
             t_i += np.sum(gt == i)

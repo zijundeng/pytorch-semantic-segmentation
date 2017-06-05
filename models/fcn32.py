@@ -23,12 +23,10 @@ class _FCN32Base(nn.Module):
 class FCN32VGG(_FCN32Base):
     def __init__(self, pretrained, num_classes):
         super(FCN32VGG, self).__init__()
-        vgg = models.vgg19()
+        vgg = models.vgg19_bn()
         if pretrained:
             vgg.load_state_dict(torch.load(pretrained_vgg19_bn))
-        features = vgg.features
-        features[0].padding = 100
-        self.features5 = features
+        self.features5 = vgg.features
         self.fconv5 = nn.Sequential(
             nn.Conv2d(512, 4096, kernel_size=7),
             nn.ReLU(inplace=True),
@@ -47,7 +45,6 @@ class FCN32ResNet(_FCN32Base):
         res = models.resnet152()
         if pretrained:
             res.load_state_dict(torch.load(pretrained_res152))
-        res.conv1.padding = 100
         self.features5 = nn.Sequential(
             res.conv1, res.bn1, res.relu, res.maxpool, res.layer1, res.layer2, res.layer3, res.layer4
         )
@@ -67,14 +64,3 @@ class FCN32DenseNet(_FCN32Base):
             nn.Conv2d(1920, num_classes, kernel_size=7)
         )
         initialize_weights(self.fconv5)
-
-
-        # from torch.autograd import Variable
-        # import time
-        # net = FCN32DenseNet(pretrained=True, num_classes=21).cuda()
-        # inputs = Variable(torch.randn((8, 3, 512, 320))).cuda()
-        # a = time.time()
-        # outputs = net(inputs)
-        # print time.time() - a
-        # print outputs.size()
-        # print models.densenet201()
