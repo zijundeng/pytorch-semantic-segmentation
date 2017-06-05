@@ -12,22 +12,23 @@ from models import FCN8ResNet
 from utils.loss import CrossEntropyLoss2d
 from utils.training import colorize_mask, calculate_mean_iu
 from utils.transforms import *
+from utils.io import rmrf_mkdir
 
 cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 8
-    validation_batch_size = 8
+    training_batch_size = 16
+    validation_batch_size = 16
     epoch_num = 200
     iter_freq_print_training_log = 250
-    lr = 1e-4
+    lr = 5e-5
 
     # net = FCN8ResNet(pretrained=True, num_classes=num_classes).cuda()
     # curr_epoch = 0
 
     net = FCN8ResNet(pretrained=False, num_classes=num_classes).cuda()
-    snapshot = 'epoch_6_validation_loss_1.6566_mean_iu_0.4934.pth'
+    snapshot = 'epoch_12_validation_loss_1.4435_mean_iu_0.5753.pth'
     net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
     split_res = snapshot.split('_')
     curr_epoch = int(split_res[1])
@@ -62,27 +63,14 @@ def main():
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
 
-    best_val_loss = 1e9
-    best_epoch = -1
-    best_mean_iu = -1
+    best = [1e9, -1, -1]  # [best_val_loss, best_mean_iu, best_epoch]
 
     for epoch in range(curr_epoch, epoch_num):
         train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log)
         # if (epoch + 1) % 10 == 0:
         #     lr /= 2
         #     adjust_lr(optimizer, lr)
-        val_loss, mean_iu = validate(epoch, val_loader, net, criterion, restore)
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            best_epoch = epoch
-            best_mean_iu = mean_iu
-            torch.save(net.state_dict(), os.path.join(
-                ckpt_path, 'epoch_%d_validation_loss_%.4f_mean_iu_%.4f.pth' % (epoch + 1, val_loss, mean_iu)))
-        print '--------------------------------------------------------'
-        print '[validation loss %.4f]' % val_loss
-        print '[best validation loss %.4f], [best_mean_iu %.4f], [best epoch %d]' % (
-            best_val_loss, best_mean_iu, best_epoch + 1)
-        print '--------------------------------------------------------'
+        validate(epoch, val_loader, net, criterion, restore, best)
 
 
 def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log):
@@ -104,7 +92,7 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
                 epoch + 1, i + 1, loss.data[0], mean_iu)
 
 
-def validate(epoch, val_loader, net, criterion, restore):
+def validate(epoch, val_loader, net, criterion, restore, best):
     net.eval()
     batch_inputs = []
     batch_outputs = []
@@ -133,20 +121,32 @@ def validate(epoch, val_loader, net, criterion, restore):
 
     mean_iu = calculate_mean_iu(batch_prediction, batch_labels, num_classes)
 
-    to_save_dir = os.path.join(ckpt_path, str(epoch + 1))
-    if not os.path.exists(to_save_dir):
-        os.mkdir(to_save_dir)
+    if val_loss < best[0]:
+        best[0] = val_loss
+        best[1] = mean_iu
+        best[2] = epoch
+        torch.save(net.state_dict(), os.path.join(
+            ckpt_path, 'epoch_%d_validation_loss_%.4f_mean_iu_%.4f.pth' % (epoch + 1, val_loss, mean_iu)))
 
-    for idx, tensor in enumerate(zip(batch_inputs, batch_prediction, batch_labels)):
-        pil_input = restore(tensor[0])
-        pil_output = Image.fromarray(colorize_mask(tensor[1], ignored_label=ignored_label), 'RGB')
-        pil_label = Image.fromarray(colorize_mask(tensor[2], ignored_label=ignored_label), 'RGB')
-        pil_input.save(os.path.join(to_save_dir, '%d_img.png' % idx))
-        pil_output.save(os.path.join(to_save_dir, '%d_out.png' % idx))
-        pil_label.save(os.path.join(to_save_dir, '%d_label.png' % idx))
+        to_save_dir = os.path.join(ckpt_path, str(epoch + 1))
+        if os.path.exists(to_save_dir):
+            rmrf_mkdir(to_save_dir)
+
+        for idx, tensor in enumerate(zip(batch_inputs, batch_prediction, batch_labels)):
+            pil_input = restore(tensor[0])
+            pil_output = Image.fromarray(colorize_mask(tensor[1], ignored_label=ignored_label), 'RGB')
+            pil_label = Image.fromarray(colorize_mask(tensor[2], ignored_label=ignored_label), 'RGB')
+            pil_input.save(os.path.join(to_save_dir, '%d_img.png' % idx))
+            pil_output.save(os.path.join(to_save_dir, '%d_out.png' % idx))
+            pil_label.save(os.path.join(to_save_dir, '%d_label.png' % idx))
+
+    print '--------------------------------------------------------'
+    print '[validation loss %.4f]' % val_loss
+    print '[best validation loss %.4f], [best_mean_iu %.4f], [best epoch %d]' % (
+        best[0], best[1], best[2] + 1)
+    print '--------------------------------------------------------'
 
     net.train()
-    return val_loss, mean_iu
 
 
 if __name__ == '__main__':

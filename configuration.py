@@ -17,6 +17,7 @@ voc_dataset_root = '/home/b3-542/datasets/VOCdevkit/VOC2012'  # should be correc
 # Thank TheLegendAli for the download link
 voc_image_dir_path = os.path.join(voc_dataset_root, 'JPEGImages')
 voc_mask_dir_path = os.path.join(voc_dataset_root, 'SegmentationClassAug')
+ckpt_path = '/media/b3-542/LIBRARY/ZijunDeng/ckpt'  # path to stored checkpoints
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -31,4 +32,4 @@ mask_dir_name = 'masks'
 num_classes = 21
 ignored_label = 255
 
-ckpt_path = '/media/b3-542/LIBRARY/ZijunDeng/ckpt'
+
