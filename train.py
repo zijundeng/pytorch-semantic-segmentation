@@ -13,7 +13,7 @@ from utils.loss import CrossEntropyLoss2d
 from utils.training import colorize_mask, calculate_mean_iu
 from utils.transforms import *
 
-cudnn.benchmark = True
+# cudnn.benchmark = True
 
 
 def main():
@@ -27,7 +27,7 @@ def main():
     # curr_epoch = 0
 
     net = FCN8ResNet(pretrained=False, num_classes=num_classes).cuda()
-    snapshot = 'epoch_3_validation_loss_2.1571_mean_iu_0.3719.pth'
+    snapshot = 'epoch_4_validation_loss_2.0800_mean_iu_0.3232.pth'
     net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
     split_res = snapshot.split('_')
     curr_epoch = int(split_res[1])
@@ -37,7 +37,7 @@ def main():
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     simultaneous_transform = SimultaneousCompose([
         SimultaneousRandomHorizontallyFlip(),
-        SimultaneousRandomCrop(352)
+        SimultaneousRandomCrop(320)
     ])
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -96,6 +96,8 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
+        if i > 10:
+            break
 
         if (i + 1) % iter_freq_print_training_log == 0:
             prediction = outputs.data.max(1)[1].squeeze_(1).cpu().numpy()

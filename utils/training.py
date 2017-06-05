@@ -52,9 +52,6 @@ def colorize_mask(mask, ignored_label):
 
 def calculate_mean_iu(predictions, gts, num_classes, ignored_label):
     sum_iu = 0
-    useful_idx = gts != ignored_label
-    predictions = predictions[useful_idx]
-    gts = gts[useful_idx]
     for i in xrange(num_classes):
         n_ii = t_i = sum_n_ji = 0
         for p, gt in zip(predictions, gts):
