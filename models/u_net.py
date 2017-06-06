@@ -67,13 +67,3 @@ class UNet(nn.Module):
         dec1 = self.dec1(torch.cat([dec2, F.upsample_bilinear(enc1, dec2.size()[2:])], 1))
         final = self.final(dec1)
         return F.upsample_bilinear(final, x.size()[2:])
-
-# from torch.autograd import Variable
-# import time
-#
-# net = UNet(num_classes=21).cuda()
-# inputs = Variable(torch.randn((8, 3, 512, 320))).cuda()
-# a = time.time()
-# outputs = net(inputs)
-# print time.time() - a
-# print outputs.size()

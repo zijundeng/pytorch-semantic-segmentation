@@ -22,13 +22,13 @@ def main():
     validation_batch_size = 16
     epoch_num = 200
     iter_freq_print_training_log = 250
-    lr = 5e-5
+    lr = 1e-6
 
     # net = FCN8ResNet(pretrained=True, num_classes=num_classes).cuda()
     # curr_epoch = 0
 
     net = FCN8ResNet(pretrained=False, num_classes=num_classes).cuda()
-    snapshot = 'epoch_12_validation_loss_1.4435_mean_iu_0.5753.pth'
+    snapshot = 'epoch_45_validation_loss_1.4160_mean_iu_0.6050.pth'
     net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
     split_res = snapshot.split('_')
     curr_epoch = int(split_res[1])
@@ -129,8 +129,7 @@ def validate(epoch, val_loader, net, criterion, restore, best):
             ckpt_path, 'epoch_%d_validation_loss_%.4f_mean_iu_%.4f.pth' % (epoch + 1, val_loss, mean_iu)))
 
         to_save_dir = os.path.join(ckpt_path, str(epoch + 1))
-        if os.path.exists(to_save_dir):
-            rmrf_mkdir(to_save_dir)
+        rmrf_mkdir(to_save_dir)
 
         for idx, tensor in enumerate(zip(batch_inputs, batch_prediction, batch_labels)):
             pil_input = restore(tensor[0])

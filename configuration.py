@@ -4,7 +4,8 @@ import os
 """
 The following paths in this block should be correctly referred
 """
-# official pretrained models
+# go here (https://github.com/pytorch/vision/tree/master/torchvision/models) to find the download link
+# if you just use vgg-fcn, just only download the vgg pretrained model
 pretrained_root = '/media/b3-542/LIBRARY/ZijunDeng/PyTorch Pretrained'  # should be correctly referred
 pretrained_res152 = os.path.join(pretrained_root, 'ResNet', 'resnet152-b121ed2d.pth')
 pretrained_inception_v3 = os.path.join(pretrained_root, 'Inception', 'inception_v3_google-1a9a5a14.pth')
