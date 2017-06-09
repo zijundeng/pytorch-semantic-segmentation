@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
+from utils.training import initialize_weights
 
 
 class _EncoderBlock(nn.Module):
@@ -8,8 +9,10 @@ class _EncoderBlock(nn.Module):
         super(_EncoderBlock, self).__init__()
         layers = [
             nn.Conv2d(in_channels, out_channels, kernel_size=3),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
         ]
         if dropout:
@@ -26,8 +29,10 @@ class _DecoderBlock(nn.Module):
         super(_DecoderBlock, self).__init__()
         self.decode = nn.Sequential(
             nn.Conv2d(in_channels, middle_channels, kernel_size=3),
+            nn.BatchNorm2d(middle_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(middle_channels, middle_channels, kernel_size=3),
+            nn.BatchNorm2d(middle_channels),
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(middle_channels, out_channels, kernel_size=2, stride=2),
         )
@@ -49,11 +54,14 @@ class UNet(nn.Module):
         self.dec2 = _DecoderBlock(256, 128, 64)
         self.dec1 = nn.Sequential(
             nn.Conv2d(128, 64, kernel_size=3),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, 64, kernel_size=3),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
         )
         self.final = nn.Conv2d(64, num_classes, kernel_size=1)
+        initialize_weights(self)
 
     def forward(self, x):
         enc1 = self.enc1(x)

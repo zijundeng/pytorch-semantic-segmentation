@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torchvision import models
+from utils.training import initialize_weights
 
 from configuration import pretrained_vgg19_bn
 
@@ -44,6 +45,10 @@ class SegNet(nn.Module):
         self.enc4 = nn.Sequential(*features[27:40])
         self.enc5 = nn.Sequential(*features[40:])
 
+        # for m in self.modules():
+        #     if isinstance(m, nn.Conv2d):
+        #         m.requires_grad = False
+
         self.dec5 = nn.Sequential(
             *([nn.ConvTranspose2d(512, 512, kernel_size=2, stride=2)] +
               [nn.Conv2d(512, 512, kernel_size=3, padding=1),
@@ -54,6 +59,7 @@ class SegNet(nn.Module):
         self.dec3 = _DecoderBlock(512, 128, 4)
         self.dec2 = _DecoderBlock(256, 64, 2)
         self.dec1 = _DecoderBlock(128, num_classes, 2)
+        initialize_weights(self.dec5, self.dec4, self.dec3, self.dec2, self.dec1)
 
     def forward(self, x):
         enc1 = self.enc1(x)

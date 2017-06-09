@@ -8,57 +8,69 @@ from torchvision import transforms
 
 from configuration import train_path, val_path, num_classes, ckpt_path, ignored_label
 from datasets import VOC
-from models import FCN8ResNet
-from utils.loss import CrossEntropyLoss2d
-from utils.training import colorize_mask, calculate_mean_iu
-from utils.transforms import *
+from models import SegNet
 from utils.io import rmrf_mkdir
+from utils.loss import CrossEntropyLoss2d
+from utils.training import colorize_mask, calculate_mean_iu, adjust_lr
+from utils.transforms import *
 
 cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 16
-    validation_batch_size = 16
+    training_batch_size = 8
+    validation_batch_size = 8
     epoch_num = 200
-    iter_freq_print_training_log = 250
-    lr = 1e-6
+    iter_freq_print_training_log = 50
+    lr = 1e-4
 
-    # net = FCN8ResNet(pretrained=True, num_classes=num_classes).cuda()
-    # curr_epoch = 0
+    net = SegNet(pretrained=True, num_classes=num_classes).cuda()
+    curr_epoch = 0
 
-    net = FCN8ResNet(pretrained=False, num_classes=num_classes).cuda()
-    snapshot = 'epoch_45_validation_loss_1.4160_mean_iu_0.6050.pth'
-    net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
-    split_res = snapshot.split('_')
-    curr_epoch = int(split_res[1])
+    # net = FCN8VGG(pretrained=False, num_classes=num_classes).cuda()
+    # snapshot = 'epoch_41_validation_loss_2.1533_mean_iu_0.5225.pth'
+    # net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
+    # split_res = snapshot.split('_')
+    # curr_epoch = int(split_res[1])
 
     net.train()
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    simultaneous_transform = SimultaneousCompose([
+    train_simultaneous_transform = SimultaneousCompose([
         SimultaneousRandomHorizontallyFlip(),
-        SimultaneousRandomCrop(320)
+        SimultaneousRandomScale((0.9, 1.1)),
+        SimultaneousRandomCrop((300, 500))
     ])
-    transform = transforms.Compose([
+    train_transform = transforms.Compose([
+        RandomGaussianBlur(),
         transforms.ToTensor(),
         transforms.Normalize(*mean_std)
     ])
-
+    val_simultaneous_transform = SimultaneousCompose([
+        SimultaneousScale((300, 500))
+    ])
+    val_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(*mean_std)
+    ])
     restore = transforms.Compose([
         DeNormalize(*mean_std),
         transforms.ToPILImage()
     ])
 
-    train_set = VOC(train_path, simultaneous_transform=simultaneous_transform, transform=transform,
+    train_set = VOC(train_path, simultaneous_transform=train_simultaneous_transform, transform=train_transform,
                     target_transform=MaskToTensor())
     train_loader = DataLoader(train_set, batch_size=training_batch_size, num_workers=8, shuffle=True)
-    val_set = VOC(val_path, simultaneous_transform=simultaneous_transform, transform=transform,
+    val_set = VOC(val_path, simultaneous_transform=val_simultaneous_transform, transform=val_transform,
                   target_transform=MaskToTensor())
     val_loader = DataLoader(val_set, batch_size=validation_batch_size, num_workers=8)
 
     criterion = CrossEntropyLoss2d(ignored_label=ignored_label)
-    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, dampening=2e-5, weight_decay=5e-4)
+    optimizer = optim.SGD([
+        {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias']},
+        {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
+         'weight_decay': 5e-4}
+    ], lr=lr, momentum=0.9, nesterov=True)
 
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
@@ -67,9 +79,9 @@ def main():
 
     for epoch in range(curr_epoch, epoch_num):
         train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log)
-        # if (epoch + 1) % 10 == 0:
-        #     lr /= 2
-        #     adjust_lr(optimizer, lr)
+        if (epoch + 1) % 20 == 0:
+            lr /= 3
+            adjust_lr(optimizer, lr)
         validate(epoch, val_loader, net, criterion, restore, best)
 
 

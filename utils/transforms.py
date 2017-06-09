@@ -1,6 +1,6 @@
 import numbers
 import random
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFilter
 
 import numpy as np
 import torch
@@ -13,6 +13,13 @@ class RandomVerticalFlip(object):
         return img
 
 
+class RandomGaussianBlur(object):
+    def __call__(self, img):
+        if random.random() < 0.2:
+            return img.filter(ImageFilter.BLUR)
+        return img
+
+
 class DeNormalize(object):
     def __init__(self, mean, std):
         self.mean = mean
@@ -22,25 +29,6 @@ class DeNormalize(object):
         for t, m, s in zip(tensor, self.mean, self.std):
             t.mul_(s).add_(m)
         return tensor
-
-
-class Scale(object):
-    def __init__(self, size, interpolation=Image.BILINEAR):
-        self.size = size
-        self.interpolation = interpolation
-
-    def __call__(self, img):
-        w, h = img.size
-        if (w <= h and w == self.size) or (h <= w and h == self.size):
-            return img
-        if w < h:
-            ow = self.size
-            oh = int(self.size * h / w)
-            return img.resize((ow, oh), self.interpolation)
-        else:
-            oh = self.size
-            ow = int(self.size * w / h)
-            return img.resize((ow, oh), self.interpolation)
 
 
 class MaskToTensor(object):
@@ -90,6 +78,30 @@ class SimultaneousRandomHorizontallyFlip(object):
         if random.random() < 0.5:
             return img1.transpose(Image.FLIP_LEFT_RIGHT), img2.transpose(Image.FLIP_LEFT_RIGHT)
         return img1, img2
+
+
+class SimultaneousRandomScale(object):
+    def __init__(self, scale_range, interpolation=Image.NEAREST):
+        self.lb = scale_range[0]
+        self.ub = scale_range[1]
+        assert self.lb < self.ub
+        self.interpolation = interpolation
+
+    def __call__(self, img1, img2):
+        assert img1.size == img2.size
+        w, h = img1.size
+        ow = int(((self.ub - self.lb) * random.random() + self.lb) * w)
+        oh = int(((self.ub - self.lb) * random.random() + self.lb) * h)
+        return img1.resize((ow, oh), self.interpolation), img2.resize((ow, oh), self.interpolation)
+
+
+class SimultaneousScale(object):
+    def __init__(self, size, interpolation=Image.NEAREST):
+        self.size = size
+        self.interpolation = interpolation
+
+    def __call__(self, img1, img2):
+        return img1.resize((self.size[1], self.size[0]), self.interpolation), img2.resize((self.size[1], self.size[0]), self.interpolation)
 
 
 class CRF(object):

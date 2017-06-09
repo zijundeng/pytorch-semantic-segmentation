@@ -11,6 +11,10 @@ This repository contains some FCN-based models and the pipeline of training and 
 2. Run **split_train_val.py**.
 3. Set your model and training parameters in **train.py** and then run.
 
+## Observation
+1. Weight initialization is very important, without which the training even cannot converge no matter what learning
+rate is used.
+
 ## Reference
 1. I have referred to some nice repositories: [[1]](https://github.com/bodokaiser/piwise),
 [[2]](https://github.com/ycszen/pytorch-ss)
@@ -19,5 +23,6 @@ This repository contains some FCN-based models and the pipeline of training and 
 1. PSPNet
 2. DeepLab
 3. CRFAsRNN
-4. And so on
+4. More dataset
+5. And so on
 
