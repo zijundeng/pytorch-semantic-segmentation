@@ -22,7 +22,7 @@ def main():
     validation_batch_size = 8
     epoch_num = 200
     iter_freq_print_training_log = 50
-    lr = 1e-4
+    lr = 1e-3
 
     net = FCN8ResNet(pretrained=True, num_classes=num_classes).cuda()
     curr_epoch = 0

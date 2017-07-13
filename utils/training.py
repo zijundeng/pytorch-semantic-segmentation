@@ -76,3 +76,18 @@ def calculate_mean_iu(predictions, gts, num_classes):
     mean_iu = sum_iu / num_classes
     return mean_iu
 
+
+# def calculate_iIOU(predictions, gts, num_classes):
+#     itp = fp = ifn = 0
+#     for i in xrange(num_classes):
+#         fp += np.sum(gts[predictions == i] != i)
+#
+#         n_ii = t_i = sum_n_ji = 1e-9
+#         for p, gt in zip(predictions, gts):
+#             n_ii += np.sum(gt[p == i] == i)
+#             t_i += np.sum(gt == i)
+#             sum_n_ji += np.sum(p == i)
+#         sum_iu += float(n_ii) / (t_i + sum_n_ji - n_ii)
+#     mean_iu = sum_iu / num_classes
+#     return mean_iu
+
