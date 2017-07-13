@@ -6,12 +6,12 @@ from torch.backends import cudnn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from configuration import train_path, val_path, num_classes, ckpt_path, ignored_label
-from datasets import VOC
-from models import SegNet
+from configuration import num_classes, ckpt_path, ignored_label
+from datasets import CityScapes
+from models import FCN8ResNet
 from utils.io import rmrf_mkdir
 from utils.loss import CrossEntropyLoss2d
-from utils.training import colorize_mask, calculate_mean_iu, adjust_lr
+from utils.training import colorize_cityscapes_mask, calculate_mean_iu
 from utils.transforms import *
 
 cudnn.benchmark = True
@@ -24,7 +24,7 @@ def main():
     iter_freq_print_training_log = 50
     lr = 1e-4
 
-    net = SegNet(pretrained=True, num_classes=num_classes).cuda()
+    net = FCN8ResNet(pretrained=True, num_classes=num_classes).cuda()
     curr_epoch = 0
 
     # net = FCN8VGG(pretrained=False, num_classes=num_classes).cuda()
@@ -38,16 +38,15 @@ def main():
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     train_simultaneous_transform = SimultaneousCompose([
         SimultaneousRandomHorizontallyFlip(),
-        SimultaneousRandomScale((0.9, 1.1)),
-        SimultaneousRandomCrop((300, 500))
+        SimultaneousScale(256),
+        SimultaneousRandomCrop(224)
     ])
     train_transform = transforms.Compose([
-        RandomGaussianBlur(),
         transforms.ToTensor(),
         transforms.Normalize(*mean_std)
     ])
     val_simultaneous_transform = SimultaneousCompose([
-        SimultaneousScale((300, 500))
+        SimultaneousScale(256)
     ])
     val_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -58,12 +57,12 @@ def main():
         transforms.ToPILImage()
     ])
 
-    train_set = VOC(train_path, simultaneous_transform=train_simultaneous_transform, transform=train_transform,
-                    target_transform=MaskToTensor())
-    train_loader = DataLoader(train_set, batch_size=training_batch_size, num_workers=8, shuffle=True)
-    val_set = VOC(val_path, simultaneous_transform=val_simultaneous_transform, transform=val_transform,
-                  target_transform=MaskToTensor())
-    val_loader = DataLoader(val_set, batch_size=validation_batch_size, num_workers=8)
+    train_set = CityScapes('train', simultaneous_transform=train_simultaneous_transform, transform=train_transform,
+                           target_transform=MaskToTensor())
+    train_loader = DataLoader(train_set, batch_size=training_batch_size, num_workers=16, shuffle=True)
+    val_set = CityScapes('val', simultaneous_transform=val_simultaneous_transform, transform=val_transform,
+                         target_transform=MaskToTensor())
+    val_loader = DataLoader(val_set, batch_size=validation_batch_size, num_workers=16, shuffle=False)
 
     criterion = CrossEntropyLoss2d(ignored_label=ignored_label)
     optimizer = optim.SGD([
@@ -79,9 +78,6 @@ def main():
 
     for epoch in range(curr_epoch, epoch_num):
         train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log)
-        if (epoch + 1) % 20 == 0:
-            lr /= 3
-            adjust_lr(optimizer, lr)
         validate(epoch, val_loader, net, criterion, restore, best)
 
 
@@ -145,8 +141,8 @@ def validate(epoch, val_loader, net, criterion, restore, best):
 
         for idx, tensor in enumerate(zip(batch_inputs, batch_prediction, batch_labels)):
             pil_input = restore(tensor[0])
-            pil_output = Image.fromarray(colorize_mask(tensor[1], ignored_label=ignored_label), 'RGB')
-            pil_label = Image.fromarray(colorize_mask(tensor[2], ignored_label=ignored_label), 'RGB')
+            pil_output = Image.fromarray(colorize_cityscapes_mask(tensor[1]), 'RGB')
+            pil_label = Image.fromarray(colorize_cityscapes_mask(tensor[2]), 'RGB')
             pil_input.save(os.path.join(to_save_dir, '%d_img.png' % idx))
             pil_output.save(os.path.join(to_save_dir, '%d_out.png' % idx))
             pil_label.save(os.path.join(to_save_dir, '%d_label.png' % idx))

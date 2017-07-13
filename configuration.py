@@ -19,8 +19,14 @@ voc_dataset_root = '/home/b3-542/datasets/VOCdevkit/VOC2012'  # should be correc
 voc_image_dir_path = os.path.join(voc_dataset_root, 'JPEGImages')
 voc_mask_dir_path = os.path.join(voc_dataset_root, 'SegmentationClassAug')
 ckpt_path = '/media/b3-542/LIBRARY/ZijunDeng/ckpt'  # path to stored checkpoints
-# ----------------------------------------------------------------------------------------------------------------------
 
+cityscapes_dataset_root = '/media/library/Packages/Datasets/cityscapes'
+leftImg8bit_path = os.path.join(cityscapes_dataset_root, 'leftImg8bit_trainvaltest/leftImg8bit')
+gtFine_trainvaltest_path = os.path.join(cityscapes_dataset_root, 'gtFine_trainvaltest/gtFine')
+fine_path = os.path.join(cityscapes_dataset_root, 'preprocessed')
+fine_train_path = os.path.join(fine_path, 'train')
+fine_val_path = os.path.join(fine_path, 'val')
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
 You don't need to modify the things below.
@@ -30,7 +36,7 @@ val_path = os.path.join(voc_dataset_root, 'segmentation-val')
 image_dir_name = 'images'
 mask_dir_name = 'masks'
 
-num_classes = 21
+num_classes = 19
 ignored_label = 255
 
 

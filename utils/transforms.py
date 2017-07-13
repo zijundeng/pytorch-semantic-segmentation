@@ -1,9 +1,9 @@
 import numbers
 import random
-from PIL import Image, ImageOps, ImageFilter
 
 import numpy as np
 import torch
+from PIL import Image, ImageOps, ImageFilter
 
 
 class RandomVerticalFlip(object):
@@ -47,13 +47,12 @@ class SimultaneousCompose(object):
 
 
 class SimultaneousRandomCrop(object):
-    def __init__(self, size, padding=0, interpolation=Image.NEAREST):
+    def __init__(self, size, padding=0):
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
         else:
             self.size = size
         self.padding = padding
-        self.interpolation = interpolation
 
     def __call__(self, img1, img2):
         if self.padding > 0:
@@ -66,7 +65,7 @@ class SimultaneousRandomCrop(object):
         if w == tw and h == th:
             return img1, img2
         if w < tw or h < th:
-            return img1.resize((tw, th), self.interpolation), img2.resize((tw, th), self.interpolation)
+            return img1.resize((tw, th), Image.BILINEAR), img2.resize((tw, th), Image.NEAREST)
 
         x1 = random.randint(0, w - tw)
         y1 = random.randint(0, h - th)
@@ -95,13 +94,33 @@ class SimultaneousRandomScale(object):
         return img1.resize((ow, oh), self.interpolation), img2.resize((ow, oh), self.interpolation)
 
 
-class SimultaneousScale(object):
+class SimultaneousFreeScale(object):
     def __init__(self, size, interpolation=Image.NEAREST):
         self.size = size
         self.interpolation = interpolation
 
     def __call__(self, img1, img2):
-        return img1.resize((self.size[1], self.size[0]), self.interpolation), img2.resize((self.size[1], self.size[0]), self.interpolation)
+        return img1.resize((self.size[0], self.size[1]), self.interpolation), img2.resize((self.size[1], self.size[0]),
+                                                                                          self.interpolation)
+
+
+class SimultaneousScale(object):
+    def __init__(self, size):
+        self.size = size
+
+    def __call__(self, img1, img2):
+        assert img1.size == img2.size
+        w, h = img1.size
+        if (w <= h and w == self.size) or (h <= w and h == self.size):
+            return img1, img2
+        if w < h:
+            ow = self.size
+            oh = int(self.size * h / w)
+            return img1.resize((ow, oh), Image.BILINEAR), img2.resize((ow, oh), Image.NEAREST)
+        else:
+            oh = self.size
+            ow = int(self.size * w / h)
+            return img1.resize((ow, oh), Image.BILINEAR), img2.resize((ow, oh), Image.NEAREST)
 
 
 class CRF(object):
