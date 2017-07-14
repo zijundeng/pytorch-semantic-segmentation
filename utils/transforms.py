@@ -72,6 +72,22 @@ class SimultaneousRandomCrop(object):
         return img1.crop((x1, y1, x1 + tw, y1 + th)), img2.crop((x1, y1, x1 + tw, y1 + th))
 
 
+class SimultaneousCenterCrop(object):
+
+    def __init__(self, size):
+        if isinstance(size, numbers.Number):
+            self.size = (int(size), int(size))
+        else:
+            self.size = size
+
+    def __call__(self, img1, img2):
+        w, h = img1.size
+        th, tw = self.size
+        x1 = int(round((w - tw) / 2.))
+        y1 = int(round((h - th) / 2.))
+        return img1.crop((x1, y1, x1 + tw, y1 + th)), img2.crop((x1, y1, x1 + tw, y1 + th))
+
+
 class SimultaneousRandomHorizontallyFlip(object):
     def __call__(self, img1, img2):
         if random.random() < 0.5:

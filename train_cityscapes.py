@@ -8,7 +8,7 @@ from torchvision import transforms
 
 from configuration import num_classes, ckpt_path, ignored_label
 from datasets import CityScapes
-from models import FCN8ResNet
+from models import FCN8DenseNet
 from utils.io import rmrf_mkdir
 from utils.loss import CrossEntropyLoss2d
 from utils.training import colorize_cityscapes_mask, calculate_mean_iu
@@ -19,16 +19,16 @@ cudnn.benchmark = True
 
 def main():
     training_batch_size = 8
-    validation_batch_size = 8
+    validation_batch_size = 32
     epoch_num = 200
     iter_freq_print_training_log = 50
-    lr = 1e-3
+    lr = 1e-4
 
-    net = FCN8ResNet(pretrained=True, num_classes=num_classes).cuda()
+    net = FCN8DenseNet(pretrained=True, num_classes=num_classes).cuda()
     curr_epoch = 0
 
-    # net = FCN8VGG(pretrained=False, num_classes=num_classes).cuda()
-    # snapshot = 'epoch_41_validation_loss_2.1533_mean_iu_0.5225.pth'
+    # net = FCN8DenseNet(pretrained=False, num_classes=num_classes).cuda()
+    # snapshot = 'epoch_82_validation_loss_2.3898_mean_iu_0.1843.pth'
     # net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
     # split_res = snapshot.split('_')
     # curr_epoch = int(split_res[1])
@@ -46,7 +46,8 @@ def main():
         transforms.Normalize(*mean_std)
     ])
     val_simultaneous_transform = SimultaneousCompose([
-        SimultaneousScale(256)
+        SimultaneousScale(256),
+        SimultaneousCenterCrop(224),
     ])
     val_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -141,8 +142,8 @@ def validate(epoch, val_loader, net, criterion, restore, best):
 
         for idx, tensor in enumerate(zip(batch_inputs, batch_prediction, batch_labels)):
             pil_input = restore(tensor[0])
-            pil_output = Image.fromarray(colorize_cityscapes_mask(tensor[1]), 'RGB')
-            pil_label = Image.fromarray(colorize_cityscapes_mask(tensor[2]), 'RGB')
+            pil_output = colorize_cityscapes_mask(tensor[1])
+            pil_label = colorize_cityscapes_mask(tensor[2])
             pil_input.save(os.path.join(to_save_dir, '%d_img.png' % idx))
             pil_output.save(os.path.join(to_save_dir, '%d_out.png' % idx))
             pil_label.save(os.path.join(to_save_dir, '%d_label.png' % idx))

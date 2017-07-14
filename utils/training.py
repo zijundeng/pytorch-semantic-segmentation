@@ -59,8 +59,9 @@ for i in range(zero_pad):
 
 
 def colorize_cityscapes_mask(mask):
-    new_mask = Image.fromarray(mask).convert('P')
+    new_mask = Image.fromarray(mask.astype(np.uint8)).convert('P')
     new_mask.putpalette(palette)
+
     return new_mask
 
 

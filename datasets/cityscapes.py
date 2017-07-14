@@ -17,14 +17,14 @@ def make_dataset(mode):
         fine_train_mask_path = os.path.join(fine_train_path, 'mask')
         for img_name in [img_name.split('leftImg8bit.png')[0] for img_name in os.listdir(fine_train_img_path)]:
             item = (os.path.join(fine_train_img_path, img_name + 'leftImg8bit.png'),
-                    os.path.join(fine_train_mask_path, img_name + 'labelIds.png'))
+                    os.path.join(fine_train_mask_path, img_name + 'gtFine_labelIds.png'))
             images.append(item)
     elif mode == 'val':
         fine_val_img_path = os.path.join(fine_val_path, 'img')
         fine_val_mask_path = os.path.join(fine_val_path, 'mask')
         for img_name in [img_name.split('leftImg8bit.png')[0] for img_name in os.listdir(fine_val_img_path)]:
             item = (os.path.join(fine_val_img_path, img_name + 'leftImg8bit.png'),
-                    os.path.join(fine_val_mask_path, img_name + 'labelIds.png'))
+                    os.path.join(fine_val_mask_path, img_name + 'gtFine_labelIds.png'))
             images.append(item)
     return images
 
