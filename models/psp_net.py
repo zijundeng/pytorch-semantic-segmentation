@@ -1,81 +1,73 @@
+import math
+
 import torch
-import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
+from configuration import pretrained_res152
+
 
 class PyramidPoolingModule(nn.Module):
-    def __init__(self, in_features, out_features, down_scale, up_size):
+    def __init__(self, in_size, in_dim, reduction_dim, setting):
         super(PyramidPoolingModule, self).__init__()
-
-        self.features = nn.Sequential(
-            nn.AvgPool2d(down_scale, stride=down_scale),
-            nn.Conv2d(in_features, out_features, kernel_size=1, bias=False),
-            nn.BatchNorm2d(out_features, momentum=.95),
-            nn.ReLU(inplace=True),
-            nn.UpsamplingBilinear2d(up_size)
-        )
+        self.features = []
+        for s in setting:
+            pool_size = (math.ceil(float(in_size[0]) / s), math.ceil(float(in_size[1]) / s))
+            self.features.append(nn.Sequential(
+                nn.AvgPool2d(kernel_size=pool_size, stride=pool_size, ceil_mode=True),
+                nn.Conv2d(in_dim, reduction_dim, kernel_size=1, bias=False),
+                nn.BatchNorm2d(reduction_dim, momentum=.95),
+                nn.ReLU(),
+                nn.UpsamplingBilinear2d(size=in_size)
+            ))
 
     def forward(self, x):
-        return self.features(x)
+        out = [x]
+        for f in self.features:
+            out.append(f(x))
+        out = torch.cat(out, 1)
+        return out
 
 
 class PSPNet(nn.Module):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, pretrained, num_classes, input_size):
         super(PSPNet, self).__init__()
-
-        resnet = models.resnet101(pretrained=True)
-
-        self.layer0 = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(64, momentum=.95),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, 3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(64, momentum=.95),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 128, 3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(128, momentum=.95),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-        )
-
+        resnet = models.resnet152()
+        if pretrained:
+            resnet.load_state_dict(torch.load(pretrained_res152))
+        self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
         self.layer1 = resnet.layer1
         self.layer2 = resnet.layer2
         self.layer3 = resnet.layer3
         self.layer4 = resnet.layer4
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                m.stride = 1
-                m.requires_grad = False
-            if isinstance(m, nn.BatchNorm2d):
-                m.requires_grad = False
-
-        self.layer5a = PyramidPoolingModule(2048, 512, 60, 60)
-        self.layer5b = PyramidPoolingModule(2048, 512, 30, 60)
-        self.layer5c = PyramidPoolingModule(2048, 512, 20, 60)
-        self.layer5d = PyramidPoolingModule(2048, 512, 10, 60)
+        self.ppm = PyramidPoolingModule((input_size[0] / 32, input_size[1] / 32), 2048, 512, (1, 2, 3, 6))
 
         self.final = nn.Sequential(
-            nn.Conv2d(2048, 512, 3, padding=1, bias=False),
+            nn.Conv2d(4096, 512, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(512, momentum=.95),
-            nn.ReLU(inplace=True),
-            nn.Dropout(.1),
-            nn.Conv2d(512, num_classes, 1),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Conv2d(512, num_classes, kernel_size=1),
+            nn.UpsamplingBilinear2d(size=input_size)
         )
 
     def forward(self, x):
-        y = self.conv1(x)
-        y = self.layer1(y)
-        y = self.layer2(y)
-        y = self.layer3(y)
-        y = self.layer4(y)
-        y = self.final(torch.cat([
-            y,
-            self.layer5a(y),
-            self.layer5b(y),
-            self.layer5c(y),
-            self.layer5d(y),
-        ], 1))
+        x = self.layer0(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.ppm(x)
+        x = self.final(x)
+        return x
 
-        return F.upsample_bilinear(y, x.size()[2:])
+
+from torch.autograd import Variable
+import time
+
+net = PSPNet()
+inputs = Variable(torch.randn((1, 3, 512, 1024)))
+a = time.time()
+outputs = net(inputs)
+print time.time() - a
+print outputs.size()

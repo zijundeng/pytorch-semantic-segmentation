@@ -75,13 +75,4 @@ class SegNet(nn.Module):
         dec1 = self.dec1(torch.cat([enc1, dec2], 1))
         return dec1
 
-# from torch.autograd import Variable
-# import time
-#
-# net = SegNet(pretrained=True, num_classes=21).cuda()
-# print net
-# inputs = Variable(torch.randn((1, 3, 288, 256))).cuda()
-# a = time.time()
-# outputs = net(inputs)
-# print time.time() - a
-# print outputs.size()
+
