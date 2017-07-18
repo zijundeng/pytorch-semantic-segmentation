@@ -8,7 +8,7 @@ from torchvision import transforms
 
 from configuration import num_classes, ckpt_path, ignored_label
 from datasets import CityScapes
-from models import FCN8DenseNet
+from models import SegNet
 from utils.io import rmrf_mkdir
 from utils.loss import CrossEntropyLoss2d
 from utils.training import colorize_cityscapes_mask, calculate_mean_iu
@@ -18,28 +18,28 @@ cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 8
-    validation_batch_size = 32
-    epoch_num = 200
+    training_batch_size = 16
+    validation_batch_size = 8
+    epoch_num = 800
     iter_freq_print_training_log = 50
-    lr = 1e-4
+    lr = 1e-6  # for segmentation task using finetuning, start with lr 1e-5
 
-    net = FCN8DenseNet(pretrained=True, num_classes=num_classes).cuda()
-    curr_epoch = 0
+    # net = SegNet(pretrained=True, num_classes=num_classes).cuda()
+    # curr_epoch = 0
 
-    # net = FCN8DenseNet(pretrained=False, num_classes=num_classes).cuda()
-    # snapshot = 'epoch_82_validation_loss_2.3898_mean_iu_0.1843.pth'
-    # net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
-    # split_res = snapshot.split('_')
-    # curr_epoch = int(split_res[1])
+    net = SegNet(pretrained=False, num_classes=num_classes).cuda()
+    snapshot = 'epoch_176_validation_loss_2.2082_mean_iu_0.0929_lr_0.00001000.pth'
+    net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
+    split_res = snapshot.split('_')
+    curr_epoch = int(split_res[1])
 
     net.train()
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     train_simultaneous_transform = SimultaneousCompose([
-        SimultaneousRandomHorizontallyFlip(),
         SimultaneousScale(256),
-        SimultaneousRandomCrop(224)
+        SimultaneousRandomCrop(224),
+        SimultaneousRandomHorizontallyFlip()
     ])
     train_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -79,7 +79,7 @@ def main():
 
     for epoch in range(curr_epoch, epoch_num):
         train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log)
-        validate(epoch, val_loader, net, criterion, restore, best)
+        validate(epoch, val_loader, net, criterion, restore, best, lr)
 
 
 def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log):
@@ -101,7 +101,7 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
                 epoch + 1, i + 1, loss.data[0], mean_iu)
 
 
-def validate(epoch, val_loader, net, criterion, restore, best):
+def validate(epoch, val_loader, net, criterion, restore, best, lr):
     net.eval()
     batch_inputs = []
     batch_outputs = []
@@ -135,7 +135,10 @@ def validate(epoch, val_loader, net, criterion, restore, best):
         best[1] = mean_iu
         best[2] = epoch
         torch.save(net.state_dict(), os.path.join(
-            ckpt_path, 'epoch_%d_validation_loss_%.4f_mean_iu_%.4f.pth' % (epoch + 1, val_loss, mean_iu)))
+            ckpt_path, 'epoch_%d_validation_loss_%.4f_mean_iu_%.4f_lr_%.8f.pth' % (epoch + 1, val_loss, mean_iu, lr)))
+
+        with open('log.txt', 'a') as f:
+            f.write('epoch_%d_validation_loss_%.4f_mean_iu_%.4f_lr_%.8f\n' % (epoch + 1, val_loss, mean_iu, lr))
 
         to_save_dir = os.path.join(ckpt_path, str(epoch + 1))
         rmrf_mkdir(to_save_dir)
