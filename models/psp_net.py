@@ -12,7 +12,7 @@ class PyramidPoolingModule(nn.Module):
         super(PyramidPoolingModule, self).__init__()
         self.features = []
         for s in setting:
-            pool_size = (math.ceil(float(in_size[0]) / s), math.ceil(float(in_size[1]) / s))
+            pool_size = (int(math.ceil(float(in_size[0]) / s)), int(math.ceil(float(in_size[1]) / s)))
             self.features.append(nn.Sequential(
                 nn.AvgPool2d(kernel_size=pool_size, stride=pool_size, ceil_mode=True),
                 nn.Conv2d(in_dim, reduction_dim, kernel_size=1, bias=False),
@@ -60,14 +60,3 @@ class PSPNet(nn.Module):
         x = self.ppm(x)
         x = self.final(x)
         return x
-
-
-from torch.autograd import Variable
-import time
-
-net = PSPNet()
-inputs = Variable(torch.randn((1, 3, 512, 1024)))
-a = time.time()
-outputs = net(inputs)
-print time.time() - a
-print outputs.size()
