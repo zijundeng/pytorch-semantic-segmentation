@@ -8,7 +8,7 @@ from torchvision import transforms
 
 from configuration import num_classes, ckpt_path, ignored_label
 from datasets import CityScapes
-from models import SegNet
+from models import PSPNet
 from utils.io import rmrf_mkdir
 from utils.loss import CrossEntropyLoss2d
 from utils.training import colorize_cityscapes_mask, calculate_mean_iu
@@ -18,17 +18,17 @@ cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 16
-    validation_batch_size = 8
+    training_batch_size = 2
+    validation_batch_size = 1
     epoch_num = 800
-    iter_freq_print_training_log = 50
-    lr = 1e-6  # for segmentation task using finetuning, start with lr 1e-5
+    iter_freq_print_training_log = 200
+    lr = 1e-5  # for segmentation task using finetuning, start with lr 1e-5
 
-    # net = SegNet(pretrained=True, num_classes=num_classes).cuda()
+    # net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(512, 1024)).cuda()
     # curr_epoch = 0
 
-    net = SegNet(pretrained=False, num_classes=num_classes).cuda()
-    snapshot = 'epoch_176_validation_loss_2.2082_mean_iu_0.0929_lr_0.00001000.pth'
+    net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(512, 1024)).cuda()
+    snapshot = 'epoch_46_validation_loss_5.0300_mean_iu_0.3372_lr_0.00001000.pth'
     net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
     split_res = snapshot.split('_')
     curr_epoch = int(split_res[1])
@@ -37,8 +37,8 @@ def main():
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     train_simultaneous_transform = SimultaneousCompose([
-        SimultaneousScale(256),
-        SimultaneousRandomCrop(224),
+        SimultaneousScale(585),
+        SimultaneousRandomCrop((512, 1024)),
         SimultaneousRandomHorizontallyFlip()
     ])
     train_transform = transforms.Compose([
@@ -46,8 +46,8 @@ def main():
         transforms.Normalize(*mean_std)
     ])
     val_simultaneous_transform = SimultaneousCompose([
-        SimultaneousScale(256),
-        SimultaneousCenterCrop(224),
+        SimultaneousScale(585),
+        SimultaneousCenterCrop((512, 1024)),
     ])
     val_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -66,11 +66,11 @@ def main():
     val_loader = DataLoader(val_set, batch_size=validation_batch_size, num_workers=16, shuffle=False)
 
     criterion = CrossEntropyLoss2d(ignored_label=ignored_label)
-    optimizer = optim.SGD([
+    optimizer = optim.Adam([
         {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias']},
         {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
          'weight_decay': 5e-4}
-    ], lr=lr, momentum=0.9, nesterov=True)
+    ], lr=lr)
 
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)

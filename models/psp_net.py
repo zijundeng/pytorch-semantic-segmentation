@@ -3,6 +3,7 @@ import math
 import torch
 from torch import nn
 from torchvision import models
+from utils.training import initialize_weights
 
 from configuration import pretrained_res152
 
@@ -20,6 +21,7 @@ class PyramidPoolingModule(nn.Module):
                 nn.ReLU(),
                 nn.UpsamplingBilinear2d(size=in_size)
             ))
+        self.features = nn.ModuleList(self.features)
 
     def forward(self, x):
         out = [x]
@@ -50,6 +52,8 @@ class PSPNet(nn.Module):
             nn.Conv2d(512, num_classes, kernel_size=1),
             nn.UpsamplingBilinear2d(size=input_size)
         )
+
+        initialize_weights(self.ppm, self.final)
 
     def forward(self, x):
         x = self.layer0(x)
