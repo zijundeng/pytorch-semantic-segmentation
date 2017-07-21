@@ -18,17 +18,17 @@ cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 2
+    training_batch_size = 3
     validation_batch_size = 1
     epoch_num = 800
     iter_freq_print_training_log = 200
-    lr = 1e-5  # for segmentation task using finetuning, start with lr 1e-5
+    lr = 1e-6  # for segmentation task using finetuning, start with lr 1e-5
 
     # net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(512, 1024)).cuda()
     # curr_epoch = 0
 
     net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(512, 1024)).cuda()
-    snapshot = 'epoch_46_validation_loss_5.0300_mean_iu_0.3372_lr_0.00001000.pth'
+    snapshot = 'epoch_48_validation_loss_5.1326_mean_iu_0.3172_lr_0.00001000.pth'
     net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
     split_res = snapshot.split('_')
     curr_epoch = int(split_res[1])
@@ -66,11 +66,11 @@ def main():
     val_loader = DataLoader(val_set, batch_size=validation_batch_size, num_workers=16, shuffle=False)
 
     criterion = CrossEntropyLoss2d(ignored_label=ignored_label)
-    optimizer = optim.Adam([
+    optimizer = optim.SGD([
         {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias']},
         {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
          'weight_decay': 5e-4}
-    ], lr=lr)
+    ], lr=lr, momentum=0.9, nesterov=True)
 
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)

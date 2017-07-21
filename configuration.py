@@ -19,6 +19,7 @@ voc_dataset_root = '/home/b3-542/datasets/VOCdevkit/VOC2012'  # should be correc
 voc_image_dir_path = os.path.join(voc_dataset_root, 'JPEGImages')
 voc_mask_dir_path = os.path.join(voc_dataset_root, 'SegmentationClassAug')
 ckpt_path = '/media/b3-542/LIBRARY/ZijunDeng/ckpt'  # path to stored checkpoints
+predict_path = os.path.join(ckpt_path, 'prediction')
 
 cityscapes_dataset_root = '/home/b3-542/cityscapes'
 leftImg8bit_path = os.path.join(cityscapes_dataset_root, 'leftImg8bit_trainvaltest/leftImg8bit')
