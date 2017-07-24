@@ -22,16 +22,17 @@ def main():
     validation_batch_size = 1
     epoch_num = 800
     iter_freq_print_training_log = 200
-    lr = 1e-6  # for segmentation task using finetuning, start with lr 1e-5
+    new_lr = 1e-2
+    pretrained_lr = 1e-4
 
-    # net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(512, 1024)).cuda()
-    # curr_epoch = 0
+    net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(512, 1024)).cuda()
+    curr_epoch = 0
 
-    net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(512, 1024)).cuda()
-    snapshot = 'epoch_48_validation_loss_5.1326_mean_iu_0.3172_lr_0.00001000.pth'
-    net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
-    split_res = snapshot.split('_')
-    curr_epoch = int(split_res[1])
+    # net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(512, 1024)).cuda()
+    # snapshot = 'epoch_48_validation_loss_5.1326_mean_iu_0.3172_lr_0.00001000.pth'
+    # net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
+    # split_res = snapshot.split('_')
+    # curr_epoch = int(split_res[1])
 
     net.train()
 
@@ -65,12 +66,19 @@ def main():
                          target_transform=MaskToTensor())
     val_loader = DataLoader(val_set, batch_size=validation_batch_size, num_workers=16, shuffle=False)
 
-    criterion = CrossEntropyLoss2d(ignored_label=ignored_label)
+    criterion = CrossEntropyLoss2d(ignored_label=ignored_label, size_average=False)
     optimizer = optim.SGD([
-        {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias']},
-        {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
+        {'params': [param for name, param in net.named_parameters() if
+                    name[-4:] == 'bias' and ('ppm' in name or 'final' in name)], 'lr': new_lr},
+        {'params': [param for name, param in net.named_parameters() if
+                    name[-4:] != 'bias' and ('ppm' in name or 'final' in name)],
+         'lr': new_lr, 'weight_decay': 5e-4},
+        {'params': [param for name, param in net.named_parameters() if
+                    name[-4:] == 'bias' and not ('ppm' in name or 'final' in name)], 'lr': pretrained_lr},
+        {'params': [param for name, param in net.named_parameters() if
+                    name[-4:] != 'bias' and not ('ppm' in name or 'final' in name)], 'lr': pretrained_lr,
          'weight_decay': 5e-4}
-    ], lr=lr, momentum=0.9, nesterov=True)
+    ], momentum=0.9, nesterov=True)
 
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)

@@ -3,9 +3,9 @@ import math
 import torch
 from torch import nn
 from torchvision import models
-from utils.training import initialize_weights
 
 from configuration import pretrained_res152
+from utils.training import initialize_weights
 
 
 class PyramidPoolingModule(nn.Module):
@@ -42,7 +42,23 @@ class PSPNet(nn.Module):
         self.layer2 = resnet.layer2
         self.layer3 = resnet.layer3
         self.layer4 = resnet.layer4
-        self.ppm = PyramidPoolingModule((input_size[0] / 32, input_size[1] / 32), 2048, 512, (1, 2, 3, 6))
+
+        for n, m in self.layer3.named_modules():
+            if 'conv2' in n:
+                m.dilation = (2, 2)
+                m.padding = (2, 2)
+                m.stride = (1, 1)
+            elif 'downsample.0' in n:
+                m.stride = (1, 1)
+        for n, m in self.layer4.named_modules():
+            if 'conv2' in n:
+                m.dilation = (4, 4)
+                m.padding = (4, 4)
+                m.stride = (1, 1)
+            elif 'downsample.0' in n:
+                m.stride = (1, 1)
+
+        self.ppm = PyramidPoolingModule((input_size[0] / 8, input_size[1] / 8), 2048, 512, (1, 2, 3, 6))
 
         self.final = nn.Sequential(
             nn.Conv2d(4096, 512, kernel_size=3, padding=1, bias=False),

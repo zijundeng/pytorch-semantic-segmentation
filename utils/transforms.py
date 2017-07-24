@@ -36,6 +36,15 @@ class MaskToTensor(object):
         return torch.from_numpy(np.array(img, dtype=np.int32)).long()
 
 
+class FreeScale(object):
+    def __init__(self, size, interpolation=Image.BILINEAR):
+        self.size = size
+        self.interpolation = interpolation
+
+    def __call__(self, img):
+        return img.resize((self.size[1], self.size[0]), self.interpolation)
+
+
 class SimultaneousCompose(object):
     def __init__(self, transforms):
         self.transforms = transforms

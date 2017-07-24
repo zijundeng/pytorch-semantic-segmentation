@@ -3,9 +3,10 @@ from torch.nn.modules.loss import _WeightedLoss, _assert_no_grad
 
 
 class CrossEntropyLoss2d(_WeightedLoss):
-    def __init__(self, ignored_label):
+    def __init__(self, ignored_label, size_average):
         super(CrossEntropyLoss2d, self).__init__()
         self.ignored_label = ignored_label
+        self.size_average = size_average
 
     def forward(self, inputs, targets):
         _assert_no_grad(targets)

@@ -24,7 +24,7 @@ def main():
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     transform = transforms.Compose([
-        transforms.Scale(512),
+        FreeScale((512, 1024)),
         transforms.ToTensor(),
         transforms.Normalize(*mean_std)
     ])
@@ -33,9 +33,9 @@ def main():
         transforms.ToPILImage()
     ])
 
-    lsun_path = '/media/library/Packages/Datasets/LSUN'
+    lsun_path = '/home/b3-542/LSUN'
 
-    dataset = LSUN(lsun_path, 'test', transform=transform)
+    dataset = LSUN(lsun_path, ['tower_val', 'church_outdoor_val', 'bridge_val'], transform=transform)
     dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=16, shuffle=True)
 
     if not os.path.exists(predict_path):
@@ -44,18 +44,15 @@ def main():
     for vi, data in enumerate(dataloader, 0):
         inputs, labels = data
         inputs = Variable(inputs, volatile=True).cuda()
-        labels = Variable(labels, volatile=True).cuda()
         outputs = net(inputs)
 
         prediction = outputs.cpu().data.max(1)[1].squeeze_(1).numpy()
 
-        for idx, tensor in enumerate(zip(inputs.cpu().data, prediction, labels.cpu().data.numpy())):
+        for idx, tensor in enumerate(zip(inputs.cpu().data, prediction)):
             pil_input = restore(tensor[0])
             pil_output = colorize_cityscapes_mask(tensor[1])
-            pil_label = colorize_cityscapes_mask(tensor[2])
-            pil_input.save(os.path.join(predict_path, '%d_img.png' % idx))
-            pil_output.save(os.path.join(predict_path, '%d_out.png' % idx))
-            pil_label.save(os.path.join(predict_path, '%d_label.png' % idx))
+            pil_input.save(os.path.join(predict_path, '%d_img.png' % (vi * batch_size + idx)))
+            pil_output.save(os.path.join(predict_path, '%d_out.png' % (vi * batch_size + idx)))
             print 'save the #%d batch, %d images' % (vi + 1, idx + 1)
 
 
