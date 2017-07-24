@@ -18,14 +18,14 @@ cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 3
-    validation_batch_size = 1
+    training_batch_size = 2
+    validation_batch_size = 16
     epoch_num = 800
-    iter_freq_print_training_log = 200
+    iter_freq_print_training_log = 50
     new_lr = 1e-2
     pretrained_lr = 1e-4
 
-    net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(512, 1024)).cuda()
+    net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(384, 768)).cuda()
     curr_epoch = 0
 
     # net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(512, 1024)).cuda()
@@ -38,8 +38,8 @@ def main():
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     train_simultaneous_transform = SimultaneousCompose([
-        SimultaneousScale(585),
-        SimultaneousRandomCrop((512, 1024)),
+        SimultaneousScale(439),
+        SimultaneousRandomCrop((384, 768)),
         SimultaneousRandomHorizontallyFlip()
     ])
     train_transform = transforms.Compose([
@@ -47,8 +47,8 @@ def main():
         transforms.Normalize(*mean_std)
     ])
     val_simultaneous_transform = SimultaneousCompose([
-        SimultaneousScale(585),
-        SimultaneousCenterCrop((512, 1024)),
+        SimultaneousScale(439),
+        SimultaneousCenterCrop((384, 768)),
     ])
     val_transform = transforms.Compose([
         transforms.ToTensor(),
