@@ -3,8 +3,8 @@ import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
-from configuration import pretrained_vgg19_bn, pretrained_res152, pretrained_dense201
 from utils.training import initialize_weights
+from .config import vgg19_bn_path, res152_path, dense201_path
 
 
 class _FCN8Base(nn.Module):
@@ -37,7 +37,7 @@ class FCN8VGG(_FCN8Base):
         super(FCN8VGG, self).__init__()
         vgg = models.vgg19_bn()
         if pretrained:
-            vgg.load_state_dict(torch.load(pretrained_vgg19_bn))
+            vgg.load_state_dict(torch.load(vgg19_bn_path))
         features = list(vgg.features.children())
         self.features3 = nn.Sequential(*features[0:27])
         self.features4 = nn.Sequential(*features[27:40])
@@ -61,7 +61,7 @@ class FCN8ResNet(_FCN8Base):
         super(FCN8ResNet, self).__init__()
         res = models.resnet152()
         if pretrained:
-            res.load_state_dict(torch.load(pretrained_res152))
+            res.load_state_dict(torch.load(res152_path))
         self.features3 = nn.Sequential(
             res.conv1, res.bn1, res.relu, res.maxpool, res.layer1, res.layer2
         )
@@ -78,7 +78,7 @@ class FCN8DenseNet(_FCN8Base):
         super(FCN8DenseNet, self).__init__()
         dense = models.densenet201()
         if pretrained:
-            dense.load_state_dict(torch.load(pretrained_dense201))
+            dense.load_state_dict(torch.load(dense201_path))
         features = list(dense.features.children())
         self.features3 = nn.Sequential(*features[:8])
         self.features4 = nn.Sequential(*features[8:10])

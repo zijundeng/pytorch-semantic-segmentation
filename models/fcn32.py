@@ -3,8 +3,8 @@ import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
-from configuration import pretrained_vgg19_bn, pretrained_res152, pretrained_dense201
 from utils.training import initialize_weights
+from .config import vgg19_bn_path, res152_path, dense201_path
 
 
 class _FCN32Base(nn.Module):
@@ -25,7 +25,7 @@ class FCN32VGG(_FCN32Base):
         super(FCN32VGG, self).__init__()
         vgg = models.vgg19_bn()
         if pretrained:
-            vgg.load_state_dict(torch.load(pretrained_vgg19_bn))
+            vgg.load_state_dict(torch.load(vgg19_bn_path))
         self.features5 = vgg.features
         self.fconv5 = nn.Sequential(
             nn.Conv2d(512, 4096, kernel_size=7),
@@ -44,7 +44,7 @@ class FCN32ResNet(_FCN32Base):
         super(FCN32ResNet, self).__init__()
         res = models.resnet152()
         if pretrained:
-            res.load_state_dict(torch.load(pretrained_res152))
+            res.load_state_dict(torch.load(res152_path))
         self.features5 = nn.Sequential(
             res.conv1, res.bn1, res.relu, res.maxpool, res.layer1, res.layer2, res.layer3, res.layer4
         )
@@ -57,7 +57,7 @@ class FCN32DenseNet(_FCN32Base):
         super(FCN32DenseNet, self).__init__()
         dense = models.densenet201()
         if pretrained:
-            dense.load_state_dict(torch.load(pretrained_dense201))
+            dense.load_state_dict(torch.load(dense201_path))
         self.features5 = dense.features
         self.fconv5 = nn.Sequential(
             nn.ReLU(inplace=True),

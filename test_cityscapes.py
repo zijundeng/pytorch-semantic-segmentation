@@ -1,15 +1,17 @@
 import os
 
+import torch
 from torch.autograd import Variable
 from torch.backends import cudnn
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import LSUN
 
-from configuration import num_classes, ckpt_path, predict_path
+from datasets.cityscapes.config import num_classes
+from datasets.cityscapes.utils import colorize_mask
+from config import ckpt_path, predict_path
 from models import PSPNet
-from utils.training import colorize_cityscapes_mask
-from utils.transforms import *
+import utils.transforms as expanded_transform
 
 cudnn.benchmark = True
 
@@ -24,12 +26,12 @@ def main():
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     transform = transforms.Compose([
-        FreeScale((512, 1024)),
+        expanded_transform.FreeScale((512, 1024)),
         transforms.ToTensor(),
         transforms.Normalize(*mean_std)
     ])
     restore = transforms.Compose([
-        DeNormalize(*mean_std),
+        expanded_transform.DeNormalize(*mean_std),
         transforms.ToPILImage()
     ])
 
@@ -50,7 +52,7 @@ def main():
 
         for idx, tensor in enumerate(zip(inputs.cpu().data, prediction)):
             pil_input = restore(tensor[0])
-            pil_output = colorize_cityscapes_mask(tensor[1])
+            pil_output = colorize_mask(tensor[1])
             pil_input.save(os.path.join(predict_path, '%d_img.png' % (vi * batch_size + idx)))
             pil_output.save(os.path.join(predict_path, '%d_out.png' % (vi * batch_size + idx)))
             print 'save the #%d batch, %d images' % (vi + 1, idx + 1)

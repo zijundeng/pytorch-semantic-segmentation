@@ -1,9 +1,9 @@
 import torch
 from torch import nn
 from torchvision import models
-from utils.training import initialize_weights
 
-from configuration import pretrained_vgg19_bn
+from utils.training import initialize_weights
+from .config import vgg19_bn_path
 
 
 class _DecoderBlock(nn.Module):
@@ -17,10 +17,10 @@ class _DecoderBlock(nn.Module):
             nn.ReLU(inplace=True)
         ]
         layers += [
-            nn.Conv2d(middle_channels, middle_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(middle_channels),
-            nn.ReLU(inplace=True),
-        ] * (num_conv_layers - 2)
+                      nn.Conv2d(middle_channels, middle_channels, kernel_size=3, padding=1),
+                      nn.BatchNorm2d(middle_channels),
+                      nn.ReLU(inplace=True),
+                  ] * (num_conv_layers - 2)
         layers += [
             nn.Conv2d(middle_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
@@ -37,7 +37,7 @@ class SegNet(nn.Module):
         super(SegNet, self).__init__()
         vgg = models.vgg19_bn()
         if pretrained:
-            vgg.load_state_dict(torch.load(pretrained_vgg19_bn))
+            vgg.load_state_dict(torch.load(vgg19_bn_path))
         features = list(vgg.features.children())
         self.enc1 = nn.Sequential(*features[0:7])
         self.enc2 = nn.Sequential(*features[7:14])
@@ -74,5 +74,3 @@ class SegNet(nn.Module):
         dec2 = self.dec2(torch.cat([enc2, dec3], 1))
         dec1 = self.dec1(torch.cat([enc1, dec2], 1))
         return dec1
-
-
