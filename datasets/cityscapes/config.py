@@ -1,6 +1,6 @@
 import os
 
-root = '/media/library/Packages/Datasets/cityscapes'
+root = '/home/b3-542/cityscapes'
 raw_img_path = os.path.join(root, 'leftImg8bit_trainvaltest/leftImg8bit')
 raw_mask_path = os.path.join(root, 'gtFine_trainvaltest/gtFine')
 
