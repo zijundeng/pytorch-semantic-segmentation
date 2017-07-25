@@ -15,35 +15,35 @@ from datasets.cityscapes.config import num_classes, ignored_label
 from datasets.cityscapes.utils import colorize_mask
 from models import PSPNet
 from utils.io import rmrf_mkdir
-from utils.loss import CrossEntropyLoss2dOld
+from utils.loss import CrossEntropyLoss2d
 from utils.training import calculate_mean_iu
 
 cudnn.benchmark = True
 
 
 def main():
-    training_batch_size = 3
+    training_batch_size = 8
     validation_batch_size = 1
     epoch_num = 800
     iter_freq_print_training_log = 10
-    new_lr = 1e-5
-    pretrained_lr = 1e-5
+    new_lr = 1e-2
+    pretrained_lr = 1e-4
 
-    # net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(350, 700)).cuda()
-    # curr_epoch = 0
+    net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(224, 448)).cuda()
+    curr_epoch = 0
 
-    net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(350, 700)).cuda()
-    snapshot = 'epoch_18_validation_loss_46601268.0000_mean_iu_0.2409_lr_0.00010000.pth'
-    net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
-    split_res = snapshot.split('_')
-    curr_epoch = int(split_res[1])
+    # net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(224, 448)).cuda()
+    # snapshot = 'epoch_20_validation_loss_2.7758_mean_iu_0.2520_lr_0.00001000.pth'
+    # net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
+    # split_res = snapshot.split('_')
+    # curr_epoch = int(split_res[1])
 
     net.train()
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     train_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(400),
-        simul_transforms.RandomCrop((350, 700)),
+        simul_transforms.Scale(256),
+        simul_transforms.RandomCrop((224, 448)),
         simul_transforms.RandomHorizontallyFlip()
     ])
     train_transform = standard_transforms.Compose([
@@ -51,12 +51,16 @@ def main():
         standard_transforms.Normalize(*mean_std)
     ])
     val_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(400),
-        simul_transforms.CenterCrop((350, 700)),
+        simul_transforms.Scale(256),
+        simul_transforms.CenterCrop((224, 448)),
     ])
     val_transform = standard_transforms.Compose([
         standard_transforms.ToTensor(),
         standard_transforms.Normalize(*mean_std)
+    ])
+    target_transform = standard_transforms.Compose([
+        expanded_transforms.MaskToTensor(),
+        expanded_transforms.ChangeLabel(ignored_label, num_classes - 1)
     ])
     restore_transform = standard_transforms.Compose([
         expanded_transforms.DeNormalize(*mean_std),
@@ -64,13 +68,15 @@ def main():
     ])
 
     train_set = CityScapes('train', simul_transform=train_simul_transform, transform=train_transform,
-                           target_transform=expanded_transforms.MaskToTensor())
+                           target_transform=target_transform)
     train_loader = DataLoader(train_set, batch_size=training_batch_size, num_workers=16, shuffle=True)
     val_set = CityScapes('val', simul_transform=val_simul_transform, transform=val_transform,
-                         target_transform=expanded_transforms.MaskToTensor())
+                         target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=validation_batch_size, num_workers=16, shuffle=False)
 
-    criterion = CrossEntropyLoss2dOld(ignored_label=ignored_label)
+    weight = torch.ones(num_classes)
+    weight[num_classes - 1] = 0
+    criterion = CrossEntropyLoss2d(weight).cuda()
     optimizer = optim.RMSprop([
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] == 'bias' and ('ppm' in name or 'final' in name)], 'lr': new_lr},
@@ -84,6 +90,12 @@ def main():
          'weight_decay': 5e-4}
     ], momentum=0.9)
 
+    # optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, 'optim_' + snapshot)))
+    # optimizer.param_groups[0]['lr'] = new_lr
+    # optimizer.param_groups[1]['lr'] = new_lr
+    # optimizer.param_groups[2]['lr'] = pretrained_lr
+    # optimizer.param_groups[3]['lr'] = pretrained_lr
+
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
 
@@ -91,7 +103,7 @@ def main():
 
     for epoch in range(curr_epoch, epoch_num):
         train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log)
-        validate(epoch, val_loader, net, criterion, restore_transform, best, new_lr)
+        validate(epoch, val_loader, net, criterion, restore_transform, best, new_lr, optimizer)
 
 
 def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_training_log):
@@ -107,17 +119,21 @@ def train(train_loader, net, criterion, optimizer, epoch, iter_freq_print_traini
         optimizer.step()
 
         if (i + 1) % iter_freq_print_training_log == 0:
+            outputs = outputs[:, :num_classes - 1, :, :]
             prediction = outputs.data.max(1)[1].squeeze_(1).cpu().numpy()
             mean_iu = calculate_mean_iu(prediction, labels.data.cpu().numpy(), num_classes)
             print '[epoch %d], [iter %d], [training batch loss %.4f], [mean_iu %.4f]' % (
                 epoch + 1, i + 1, loss.data[0], mean_iu)
 
 
-def validate(epoch, val_loader, net, criterion, restore, best, lr):
+def validate(epoch, val_loader, net, criterion, restore, best, lr, optimizer):
     net.eval()
     batch_inputs = []
     batch_outputs = []
     batch_labels = []
+
+    criterion = criterion.cpu()
+
     for vi, data in enumerate(val_loader, 0):
         inputs, labels = data
         inputs = Variable(inputs, volatile=True).cuda()
@@ -129,7 +145,7 @@ def validate(epoch, val_loader, net, criterion, restore, best, lr):
         batch_outputs.append(outputs.cpu())
         batch_labels.append(labels.cpu())
 
-        if vi > 100:
+        if vi > 200:
             break
 
     batch_inputs = torch.cat(batch_inputs)
@@ -139,7 +155,7 @@ def validate(epoch, val_loader, net, criterion, restore, best, lr):
     val_loss = val_loss.data[0]
 
     batch_inputs = batch_inputs.data
-    batch_outputs = batch_outputs.data
+    batch_outputs = batch_outputs.data[:, :num_classes - 1, :, :]
     batch_labels = batch_labels.data.numpy()
     batch_prediction = batch_outputs.max(1)[1].squeeze_(1).numpy()
 
@@ -151,6 +167,8 @@ def validate(epoch, val_loader, net, criterion, restore, best, lr):
         best[2] = epoch
         torch.save(net.state_dict(), os.path.join(
             ckpt_path, 'epoch_%d_validation_loss_%.4f_mean_iu_%.4f_lr_%.8f.pth' % (epoch + 1, val_loss, mean_iu, lr)))
+        torch.save(optimizer.state_dict(), os.path.join(
+            ckpt_path, 'optim_epoch_%d_validation_loss_%.4f_mean_iu_%.4f_lr_%.8f.pth' % (epoch + 1, val_loss, mean_iu, lr)))
 
         with open('log.txt', 'a') as f:
             f.write('epoch_%d_validation_loss_%.4f_mean_iu_%.4f_lr_%.8f\n' % (epoch + 1, val_loss, mean_iu, lr))
@@ -173,6 +191,7 @@ def validate(epoch, val_loader, net, criterion, restore, best, lr):
     print '--------------------------------------------------------'
 
     net.train()
+    criterion.cuda()
 
 
 if __name__ == '__main__':

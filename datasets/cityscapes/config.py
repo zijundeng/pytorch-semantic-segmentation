@@ -8,7 +8,7 @@ processed_path = os.path.join(root, 'processed')
 processed_train_path = os.path.join(processed_path, 'train')
 processed_val_path = os.path.join(processed_path, 'val')
 
-num_classes = 19
+num_classes = 19 + 1
 ignored_label = 255
 
 palette = [128, 64, 128, 244, 35, 232, 70, 70, 70, 102, 102, 156, 190, 153, 153, 153, 153, 153, 250, 170, 30,
