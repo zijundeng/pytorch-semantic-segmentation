@@ -29,11 +29,11 @@ def main():
     new_lr = 1e-5
     pretrained_lr = 1e-5
 
-    # net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(350, 700)).cuda()
+    # net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(384, 768)).cuda()
     # curr_epoch = 0
 
-    net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(350, 700)).cuda()
-    snapshot = 'epoch_18_validation_loss_46601268.0000_mean_iu_0.2409_lr_0.00010000.pth'
+    net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(384, 768)).cuda()
+    snapshot = 'epoch_19_validation_loss_69231040.0000_mean_iu_0.3243_lr_0.00001000.pth'
     net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
     split_res = snapshot.split('_')
     curr_epoch = int(split_res[1])
@@ -42,8 +42,8 @@ def main():
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     train_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(400),
-        simul_transforms.RandomCrop((350, 700)),
+        simul_transforms.Scale(439),
+        simul_transforms.RandomCrop((384, 768)),
         simul_transforms.RandomHorizontallyFlip()
     ])
     train_transform = standard_transforms.Compose([
@@ -51,8 +51,8 @@ def main():
         standard_transforms.Normalize(*mean_std)
     ])
     val_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(400),
-        simul_transforms.CenterCrop((350, 700)),
+        simul_transforms.Scale(439),
+        simul_transforms.CenterCrop((384, 768)),
     ])
     val_transform = standard_transforms.Compose([
         standard_transforms.ToTensor(),
@@ -71,7 +71,7 @@ def main():
     val_loader = DataLoader(val_set, batch_size=validation_batch_size, num_workers=16, shuffle=False)
 
     criterion = CrossEntropyLoss2dOld(ignored_label=ignored_label)
-    optimizer = optim.RMSprop([
+    optimizer = optim.Adam([
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] == 'bias' and ('ppm' in name or 'final' in name)], 'lr': new_lr},
         {'params': [param for name, param in net.named_parameters() if
@@ -82,7 +82,7 @@ def main():
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] != 'bias' and not ('ppm' in name or 'final' in name)], 'lr': pretrained_lr,
          'weight_decay': 5e-4}
-    ], momentum=0.9)
+    ])
 
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
