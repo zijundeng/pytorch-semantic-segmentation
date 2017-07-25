@@ -29,7 +29,7 @@ class RandomCrop(object):
 
         assert img1.size == img2.size
         w, h = img1.size
-        th, tw = self.size
+        th, tw  = self.size
         if w == tw and h == th:
             return img1, img2
         if w < tw or h < th:
@@ -64,11 +64,11 @@ class RandomHorizontallyFlip(object):
 
 class FreeScale(object):
     def __init__(self, size, interpolation=Image.NEAREST):
-        self.size = size  # (w, h)
+        self.size = size  # (h, w)
         self.interpolation = interpolation
 
     def __call__(self, img1, img2):
-        return img1.resize(self.size, self.interpolation), img2.resize(self.size, self.interpolation)
+        return img1.resize((self.size[1], self.size[0]), self.interpolation), img2.resize(self.size, self.interpolation)
 
 
 class Scale(object):

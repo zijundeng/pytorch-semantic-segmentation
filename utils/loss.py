@@ -16,6 +16,7 @@ class CrossEntropyLoss2dOld(nn.Module):
         super(CrossEntropyLoss2dOld, self).__init__()
         self.ignored_label = ignored_label
         self.size_average = size_average
+        self.weight = None
 
     def forward(self, inputs, targets):
         n, c, h, w = inputs.size()
