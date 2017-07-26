@@ -8,6 +8,9 @@ implemented in PyTorch.
 3. SegNet
 4. PSPNet
 
+## Visualization
+Use powerful visualization of TensorBoard for PyTorch. [Here](https://github.com/lanpa/tensorboard-pytorch)  to install.
+
 ## Usage
 1. Modify the **configuration.py** according to the hint in it.
 2. Run **split_train_val.py**.
