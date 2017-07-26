@@ -15,32 +15,32 @@ from config import ckpt_path
 from datasets.cityscapes import CityScapes
 from datasets.cityscapes.config import num_classes, ignored_label
 from datasets.cityscapes.utils import colorize_mask
-from models import PSPNet
+from models import FCN8ResNet
 from utils.io import rmrf_mkdir
 from utils.loss import CrossEntropyLoss2d
 from utils.training import calculate_mean_iu
 
 cudnn.benchmark = True
-writer = SummaryWriter('runs/psp_cityscapes')
+writer = SummaryWriter('runs/fcn8resnet_cityscapes')
 to_tensor = standard_transforms.ToTensor()
 
 
 def main():
-    training_batch_size = 7
+    training_batch_size = 24
     validation_batch_size = 1
     epoch_num = 800
-    iter_freq_print_training_log = 10
-    new_lr = 1e-5
-    pretrained_lr = 1e-5
+    iter_freq_print_training_log = 20
+    new_lr = 1e-2
+    pretrained_lr = 1e-4
 
-    # net = PSPNet(pretrained=True, num_classes=num_classes, input_size=(224, 448)).cuda()
-    # curr_epoch = 0
+    net = FCN8ResNet(pretrained=True, num_classes=num_classes).cuda()
+    curr_epoch = 0
 
-    net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(224, 448)).cuda()
-    snapshot = 'epoch_54_validation_loss_0.3545_mean_iu_0.4184_lr_0.00010000.pth'
-    net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
-    split_res = snapshot.split('_')
-    curr_epoch = int(split_res[1])
+    # net = PSPNet(pretrained=False, num_classes=num_classes, input_size=(224, 448)).cuda()
+    # snapshot = 'epoch_54_validation_loss_0.3545_mean_iu_0.4184_lr_0.00010000.pth'
+    # net.load_state_dict(torch.load(os.path.join(ckpt_path, snapshot)))
+    # split_res = snapshot.split('_')
+    # curr_epoch = int(split_res[1])
 
     net.train()
 
@@ -94,11 +94,11 @@ def main():
          'weight_decay': 5e-4}
     ], momentum=0.9, nesterov=True)
 
-    optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, 'optim_' + snapshot)))
-    optimizer.param_groups[0]['lr'] = new_lr
-    optimizer.param_groups[1]['lr'] = new_lr
-    optimizer.param_groups[2]['lr'] = pretrained_lr
-    optimizer.param_groups[3]['lr'] = pretrained_lr
+    # optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, 'optim_' + snapshot)))
+    # optimizer.param_groups[0]['lr'] = new_lr
+    # optimizer.param_groups[1]['lr'] = new_lr
+    # optimizer.param_groups[2]['lr'] = pretrained_lr
+    # optimizer.param_groups[3]['lr'] = pretrained_lr
 
     if not os.path.exists(ckpt_path):
         os.mkdir(ckpt_path)
@@ -150,6 +150,10 @@ def validate(epoch, val_loader, net, criterion, restore, best, lr, optimizer):
         batch_inputs.append(inputs.cpu())
         batch_outputs.append(outputs.cpu())
         batch_labels.append(labels.cpu())
+
+        # TODO: remove this
+        if vi > 250:
+            break
 
     batch_inputs = torch.cat(batch_inputs)
     batch_outputs = torch.cat(batch_outputs)
