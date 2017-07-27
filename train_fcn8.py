@@ -1,4 +1,5 @@
 import os
+import random
 
 import torch
 import torchvision.transforms as standard_transforms
@@ -29,7 +30,7 @@ train_record = {'best_val_loss': 1e20, 'corr_mean_iu': 0, 'corr_epoch': -1}
 train_args = {
     'batch_size': 24,
     'epoch_num': 800,  # I stop training only when val loss doesn't seem to decrease anymore, so just set a large value.
-    'pretrained_lr': 1e-4,  # used for the pretrained layers of model
+    'pretrained_lr': 1e-3,  # used for the pretrained layers of model
     'new_lr': 1e-2,  # used for the newly added layers of model
     'weight_decay': 5e-4,
     'snapshot': '',  # empty string denotes initial training, otherwise it should be a string of snapshot name
@@ -38,7 +39,8 @@ train_args = {
 }
 
 val_args = {
-    'batch_size': 8
+    'batch_size': 8,
+    'tensorboard_img_sample_rate': 0.15
 }
 
 
@@ -195,6 +197,8 @@ def validate(val_loader, net, criterion, optimizer, epoch, restore):
 
         x = []
         for idx, tensor in enumerate(zip(input_batches, prediction_batches, label_batches)):
+            if random.random() > val_args['tensorboard_img_sample_rate']:
+                continue
             pil_input = restore(tensor[0])
             pil_output = colorize_mask(tensor[1])
             pil_label = colorize_mask(tensor[2])
