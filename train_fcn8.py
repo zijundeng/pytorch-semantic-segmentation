@@ -33,14 +33,14 @@ train_args = {
     'pretrained_lr': 1e-4,  # used for the pretrained layers of model
     'new_lr': 1e-2,  # used for the newly added layers of model
     'weight_decay': 5e-4,
-    'snapshot': 'epoch_9_loss_1.7470_mean_iu_0.2226_lr_0.01000000pth',  # empty string denotes initial training, otherwise it should be a string of snapshot name
+    'snapshot': '',  # empty string denotes initial training, otherwise it should be a string of snapshot name
     'print_freq': 50,
     'input_size': (224, 448),  # (height, width)
 }
 
 val_args = {
     'batch_size': 8,
-    'tensorboard_img_sample_rate': 0.15
+    'img_sample_rate': 0.15
 }
 
 
@@ -198,7 +198,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, restore):
 
         x = []
         for idx, tensor in enumerate(zip(input_batches, prediction_batches, label_batches)):
-            if random.random() > val_args['tensorboard_img_sample_rate']:
+            if random.random() > val_args['img_sample_rate']:
                 continue
             pil_input = restore(tensor[0])
             pil_output = colorize_mask(tensor[1])

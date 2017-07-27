@@ -1,4 +1,5 @@
 import os
+import random
 
 import torch
 import torchvision.transforms as standard_transforms
@@ -33,12 +34,13 @@ train_args = {
     'new_lr': 1e-2,  # used for the newly added layers of model
     'weight_decay': 5e-4,
     'snapshot': '',  # empty string denotes initial training, otherwise it should be a string of snapshot name
-    'print_freq': 10,
+    'print_freq': 50,
     'input_size': (224, 448),  # (height, width)
 }
 
 val_args = {
-    'batch_size': 8
+    'batch_size': 8,
+    'img_sample_rate': 0.15
 }
 
 
@@ -47,6 +49,7 @@ def main():
     if len(train_args['snapshot']) == 0:
         curr_epoch = 0
     else:
+        print 'training resumes from ' + train_args['snapshot']
         net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, train_args['snapshot'])))
         split_snapshot = train_args['snapshot'].split('_')
         curr_epoch = int(split_snapshot[1])
@@ -187,9 +190,9 @@ def validate(val_loader, net, criterion, optimizer, epoch, restore):
         snapshot_name = 'epoch_%d_loss_%.4f_mean_iu_%.4f_lr_%.8f' % (
             epoch + 1, val_loss, mean_iu, train_args['new_lr'])
         torch.save(net.state_dict(), os.path.join(
-            ckpt_path, exp_name, snapshot_name + 'pth'))
+            ckpt_path, exp_name, snapshot_name + '.pth'))
         torch.save(optimizer.state_dict(), os.path.join(
-            ckpt_path, exp_name, 'opt_' + snapshot_name + 'pth'))
+            ckpt_path, exp_name, 'opt_' + snapshot_name + '.pth'))
 
         with open(exp_name + '.txt', 'a') as f:
             f.write(snapshot_name + '\n')
@@ -199,6 +202,8 @@ def validate(val_loader, net, criterion, optimizer, epoch, restore):
 
         x = []
         for idx, tensor in enumerate(zip(input_batches, prediction_batches, label_batches)):
+            if random.random() > val_args['img_sample_rate']:
+                continue
             pil_input = restore(tensor[0])
             pil_output = colorize_mask(tensor[1])
             pil_label = colorize_mask(tensor[2])
