@@ -33,7 +33,7 @@ class PyramidPoolingModule(nn.Module):
 
 
 class PSPNet(nn.Module):
-    def __init__(self, pretrained, num_classes, input_size, use_aux=True):
+    def __init__(self, num_classes, input_size, pretrained=True, use_aux=True):
         super(PSPNet, self).__init__()
         self.input_size = input_size
         self.use_aux = use_aux
@@ -71,7 +71,7 @@ class PSPNet(nn.Module):
         )
         if use_aux:
             self.aux_logits = nn.Sequential(
-                PyramidPoolingModule((int(math.ceil(input_size[0] / 16.0)), int(math.ceil(input_size[1] / 16.0))),
+                PyramidPoolingModule((int(math.ceil(input_size[0] / 8.0)), int(math.ceil(input_size[1] / 8.0))),
                                      1024, 256, (1, 2, 3, 6)),
                 nn.Conv2d(2048, 256, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(256, momentum=.95),
@@ -92,8 +92,6 @@ class PSPNet(nn.Module):
         x = self.layer4(x)
         x = self.ppm(x)
         x = self.final(x)
-        if self.training:
-            if self.use_aux:
-                return x, aux
-            return x
+        if self.training and self.use_aux:
+            return F.upsample_bilinear(x, self.input_size), F.upsample_bilinear(aux, self.input_size)
         return F.upsample_bilinear(x, self.input_size)

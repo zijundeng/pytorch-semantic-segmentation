@@ -16,14 +16,12 @@ class _FCN32Base(nn.Module):
     def forward(self, x):
         y = self.features5(x)
         y = self.fconv5(y)
-        if self.training:
-            return y
         y = F.upsample_bilinear(y, x.size()[2:])
         return y
 
 
 class FCN32VGG(_FCN32Base):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(FCN32VGG, self).__init__()
         vgg = models.vgg19_bn()
         if pretrained:
@@ -42,7 +40,7 @@ class FCN32VGG(_FCN32Base):
 
 
 class FCN32ResNet(_FCN32Base):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(FCN32ResNet, self).__init__()
         res = models.resnet152()
         if pretrained:
@@ -55,7 +53,7 @@ class FCN32ResNet(_FCN32Base):
 
 
 class FCN32DenseNet(_FCN32Base):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(FCN32DenseNet, self).__init__()
         dense = models.densenet201()
         if pretrained:

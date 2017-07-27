@@ -21,14 +21,11 @@ class _FCN16Base(nn.Module):
         y5 = self.fconv5(y5)
         y4 = self.fconv4(y4)
         y = y4 + F.upsample_bilinear(y5, y4.size()[2:])
-        if self.training:
-            return y
-        y = F.upsample_bilinear(y, x.size()[2:])
         return y
 
 
 class FCN16VGG(_FCN16Base):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(FCN16VGG, self).__init__()
         vgg = models.vgg19_bn()
         if pretrained:
@@ -50,7 +47,7 @@ class FCN16VGG(_FCN16Base):
 
 
 class FCN16ResNet(_FCN16Base):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(FCN16ResNet, self).__init__()
         res = models.resnet152()
         if pretrained:
@@ -65,7 +62,7 @@ class FCN16ResNet(_FCN16Base):
 
 
 class FCN16DenseNet(_FCN16Base):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(FCN16DenseNet, self).__init__()
         dense = models.densenet201()
         if pretrained:

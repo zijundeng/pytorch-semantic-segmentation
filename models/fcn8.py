@@ -28,14 +28,12 @@ class _FCN8Base(nn.Module):
 
         y = y4 + F.upsample_bilinear(y5, y4.size()[2:])
         y = y3 + F.upsample_bilinear(y, y3.size()[2:])
-        if self.training:
-            return y
         y = F.upsample_bilinear(y, x.size()[2:])
         return y
 
 
 class FCN8VGG(_FCN8Base):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(FCN8VGG, self).__init__()
         vgg = models.vgg19_bn()
         if pretrained:
@@ -59,7 +57,7 @@ class FCN8VGG(_FCN8Base):
 
 
 class FCN8ResNet(_FCN8Base):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(FCN8ResNet, self).__init__()
         res = models.resnet152()
         if pretrained:
@@ -76,7 +74,7 @@ class FCN8ResNet(_FCN8Base):
 
 
 class FCN8DenseNet(_FCN8Base):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(FCN8DenseNet, self).__init__()
         dense = models.densenet201()
         if pretrained:

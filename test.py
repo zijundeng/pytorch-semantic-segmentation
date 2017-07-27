@@ -9,7 +9,7 @@ from torchvision.datasets import LSUN
 
 from datasets.cityscapes.config import num_classes
 from datasets.cityscapes.utils import colorize_mask
-from config import ckpt_path, predict_path
+from config import ckpt_path, test_results_path
 from models import PSPNet
 import utils.transforms as expanded_transform
 
@@ -40,8 +40,8 @@ def main():
     dataset = LSUN(lsun_path, ['tower_val', 'church_outdoor_val', 'bridge_val'], transform=transform)
     dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=16, shuffle=True)
 
-    if not os.path.exists(predict_path):
-        os.mkdir(predict_path)
+    if not os.path.exists(test_results_path):
+        os.mkdir(test_results_path)
 
     for vi, data in enumerate(dataloader, 0):
         inputs, labels = data
@@ -53,8 +53,8 @@ def main():
         for idx, tensor in enumerate(zip(inputs.cpu().data, prediction)):
             pil_input = restore(tensor[0])
             pil_output = colorize_mask(tensor[1])
-            pil_input.save(os.path.join(predict_path, '%d_img.png' % (vi * batch_size + idx)))
-            pil_output.save(os.path.join(predict_path, '%d_out.png' % (vi * batch_size + idx)))
+            pil_input.save(os.path.join(test_results_path, '%d_img.png' % (vi * batch_size + idx)))
+            pil_output.save(os.path.join(test_results_path, '%d_out.png' % (vi * batch_size + idx)))
             print 'save the #%d batch, %d images' % (vi + 1, idx + 1)
 
 

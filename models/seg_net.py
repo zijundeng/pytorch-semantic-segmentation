@@ -33,7 +33,7 @@ class _DecoderBlock(nn.Module):
 
 
 class SegNet(nn.Module):
-    def __init__(self, pretrained, num_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(SegNet, self).__init__()
         vgg = models.vgg19_bn()
         if pretrained:
@@ -44,10 +44,6 @@ class SegNet(nn.Module):
         self.enc3 = nn.Sequential(*features[14:27])
         self.enc4 = nn.Sequential(*features[27:40])
         self.enc5 = nn.Sequential(*features[40:])
-
-        # for m in self.modules():
-        #     if isinstance(m, nn.Conv2d):
-        #         m.requires_grad = False
 
         self.dec5 = nn.Sequential(
             *([nn.ConvTranspose2d(512, 512, kernel_size=2, stride=2)] +
