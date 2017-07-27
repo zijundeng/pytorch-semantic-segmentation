@@ -33,7 +33,7 @@ train_args = {
     'pretrained_lr': 1e-3,  # used for the pretrained layers of model
     'new_lr': 1e-2,  # used for the newly added layers of model
     'weight_decay': 5e-4,
-    'snapshot': '',  # empty string denotes initial training, otherwise it should be a string of snapshot name
+    'snapshot': 'epoch_9_loss_1.7470_mean_iu_0.2226_lr_0.01000000pth',  # empty string denotes initial training, otherwise it should be a string of snapshot name
     'print_freq': 50,
     'input_size': (224, 448),  # (height, width)
 }
@@ -109,7 +109,7 @@ def main():
     ], momentum=0.9, nesterov=True)
 
     if len(train_args['snapshot']) > 0:
-        optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, 'opt_' + train_args['snapshot'])))
+        optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + train_args['snapshot'])))
         optimizer.param_groups[0]['lr'] = train_args['new_lr']
         optimizer.param_groups[1]['lr'] = train_args['new_lr']
         optimizer.param_groups[2]['lr'] = train_args['pretrained_lr']
@@ -185,9 +185,9 @@ def validate(val_loader, net, criterion, optimizer, epoch, restore):
         snapshot_name = 'epoch_%d_loss_%.4f_mean_iu_%.4f_lr_%.8f' % (
             epoch + 1, val_loss, mean_iu, train_args['new_lr'])
         torch.save(net.state_dict(), os.path.join(
-            ckpt_path, exp_name, snapshot_name + 'pth'))
+            ckpt_path, exp_name, snapshot_name + '.pth'))
         torch.save(optimizer.state_dict(), os.path.join(
-            ckpt_path, exp_name, 'opt_' + snapshot_name + 'pth'))
+            ckpt_path, exp_name, 'opt_' + snapshot_name + '.pth'))
 
         with open(exp_name + '.txt', 'a') as f:
             f.write(snapshot_name + '\n')
