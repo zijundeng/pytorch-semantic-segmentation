@@ -28,9 +28,9 @@ pil_to_tensor = standard_transforms.ToTensor()
 train_record = {'best_val_loss': 1e20, 'corr_mean_iu': 0, 'corr_epoch': -1}
 
 train_args = {
-    'batch_size': 24,
+    'batch_size': 16,
     'epoch_num': 800,  # I stop training only when val loss doesn't seem to decrease anymore, so just set a large value.
-    'pretrained_lr': 1e-3,  # used for the pretrained layers of model
+    'pretrained_lr': 1e-4,  # used for the pretrained layers of model
     'new_lr': 1e-2,  # used for the newly added layers of model
     'weight_decay': 5e-4,
     'snapshot': 'epoch_9_loss_1.7470_mean_iu_0.2226_lr_0.01000000pth',  # empty string denotes initial training, otherwise it should be a string of snapshot name
@@ -49,6 +49,7 @@ def main():
     if len(train_args['snapshot']) == 0:
         curr_epoch = 0
     else:
+        print 'training resumes from ' + train_args['snapshot']
         net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, train_args['snapshot'])))
         split_snapshot = train_args['snapshot'].split('_')
         curr_epoch = int(split_snapshot[1])
