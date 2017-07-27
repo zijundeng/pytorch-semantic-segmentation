@@ -16,6 +16,8 @@ class _FCN32Base(nn.Module):
     def forward(self, x):
         y = self.features5(x)
         y = self.fconv5(y)
+        if self.training:
+            return y
         y = F.upsample_bilinear(y, x.size()[2:])
         return y
 

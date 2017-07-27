@@ -28,6 +28,8 @@ class _FCN8Base(nn.Module):
 
         y = y4 + F.upsample_bilinear(y5, y4.size()[2:])
         y = y3 + F.upsample_bilinear(y, y3.size()[2:])
+        if self.training:
+            return y
         y = F.upsample_bilinear(y, x.size()[2:])
         return y
 

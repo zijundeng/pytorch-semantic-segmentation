@@ -1,6 +1,7 @@
 import math
 
 import torch
+import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
@@ -32,8 +33,10 @@ class PyramidPoolingModule(nn.Module):
 
 
 class PSPNet(nn.Module):
-    def __init__(self, pretrained, num_classes, input_size):
+    def __init__(self, pretrained, num_classes, input_size, use_aux=True):
         super(PSPNet, self).__init__()
+        self.input_size = input_size
+        self.use_aux = use_aux
         resnet = models.resnet152()
         if pretrained:
             resnet.load_state_dict(torch.load(res152_path))
@@ -57,18 +60,25 @@ class PSPNet(nn.Module):
                 m.stride = (1, 1)
             elif 'downsample.0' in n:
                 m.stride = (1, 1)
-
         self.ppm = PyramidPoolingModule((int(math.ceil(input_size[0] / 8.0)), int(math.ceil(input_size[1] / 8.0))),
                                         2048, 512, (1, 2, 3, 6))
-
         self.final = nn.Sequential(
             nn.Conv2d(4096, 512, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(512, momentum=.95),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Conv2d(512, num_classes, kernel_size=1),
-            nn.UpsamplingBilinear2d(size=input_size)
+            nn.Conv2d(512, num_classes, kernel_size=1)
         )
+        if use_aux:
+            self.aux_logits = nn.Sequential(
+                PyramidPoolingModule((int(math.ceil(input_size[0] / 16.0)), int(math.ceil(input_size[1] / 16.0))),
+                                     1024, 256, (1, 2, 3, 6)),
+                nn.Conv2d(2048, 256, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(256, momentum=.95),
+                nn.ReLU(),
+                nn.Dropout(0.1),
+                nn.Conv2d(256, num_classes, kernel_size=1)
+            )
 
         initialize_weights(self.ppm, self.final)
 
@@ -77,7 +87,13 @@ class PSPNet(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
+        if self.training and self.use_aux:
+            aux = self.aux_logits(x)
         x = self.layer4(x)
         x = self.ppm(x)
         x = self.final(x)
-        return x
+        if self.training:
+            if self.use_aux:
+                return x, aux
+            return x
+        return F.upsample_bilinear(x, self.input_size)

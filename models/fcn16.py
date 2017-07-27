@@ -21,6 +21,8 @@ class _FCN16Base(nn.Module):
         y5 = self.fconv5(y5)
         y4 = self.fconv4(y4)
         y = y4 + F.upsample_bilinear(y5, y4.size()[2:])
+        if self.training:
+            return y
         y = F.upsample_bilinear(y, x.size()[2:])
         return y
 
