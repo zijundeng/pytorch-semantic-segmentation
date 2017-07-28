@@ -9,16 +9,18 @@ from .config import res152_path
 # many are borrowed from https://github.com/ycszen/pytorch-ss/blob/master/gcn.py
 class GlobalConvModule(nn.Module):
     def __init__(self, in_dim, out_dim, kernel_size):
+        pad0 = (kernel_size[0] - 1) / 2
+        pad1 = (kernel_size[1] - 1) / 2
         # kernel size had better be odd number so as to avoid alignment error
         super(GlobalConvModule, self).__init__()
-        self.conv_l1 = nn.Conv2d(in_dim, out_dim, kernel_size=(kernel_size, 1),
-                                 padding=((kernel_size - 1) / 2, 0))
-        self.conv_l2 = nn.Conv2d(out_dim, out_dim, kernel_size=(1, kernel_size),
-                                 padding=(0, (kernel_size - 1) / 2))
-        self.conv_r1 = nn.Conv2d(in_dim, out_dim, kernel_size=(1, kernel_size),
-                                 padding=(0, (kernel_size - 1) / 2))
-        self.conv_r2 = nn.Conv2d(out_dim, out_dim, kernel_size=(kernel_size, 1),
-                                 padding=((kernel_size - 1) / 2, 0))
+        self.conv_l1 = nn.Conv2d(in_dim, out_dim, kernel_size=(kernel_size[0], 1),
+                                 padding=(pad0, 0))
+        self.conv_l2 = nn.Conv2d(out_dim, out_dim, kernel_size=(1, kernel_size[1]),
+                                 padding=(0, pad1))
+        self.conv_r1 = nn.Conv2d(in_dim, out_dim, kernel_size=(1, kernel_size[1]),
+                                 padding=(0, pad1))
+        self.conv_r2 = nn.Conv2d(out_dim, out_dim, kernel_size=(kernel_size[0], 1),
+                                 padding=(pad0, 0))
 
     def forward(self, x):
         x_l = self.conv_l1(x)
@@ -45,9 +47,10 @@ class BoundaryRefineModule(nn.Module):
 
 
 class GCN(nn.Module):
-    def __init__(self, num_classes, pretrained=True):
+    def __init__(self, num_classes, input_size, pretrained=True):
         super(GCN, self).__init__()
         resnet = models.resnet152()
+        self.input_size = input_size
         if pretrained:
             resnet.load_state_dict(torch.load(res152_path))
         self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu)
@@ -56,10 +59,14 @@ class GCN(nn.Module):
         self.layer3 = resnet.layer3
         self.layer4 = resnet.layer4
 
-        self.gcm1 = GlobalConvModule(2048, num_classes, 15)
-        self.gcm2 = GlobalConvModule(1024, num_classes, 31)
-        self.gcm3 = GlobalConvModule(512, num_classes, 63)
-        self.gcm4 = GlobalConvModule(256, num_classes, 127)
+        #  use large kernel with odd size
+        gcm_ks = [[input_size[0] / 32 - 1, input_size[1] / 32 - 1], [input_size[0] / 16 - 1, input_size[1] / 16 - 1],
+                  [input_size[0] / 8 - 1, input_size[1] / 8 - 1], [input_size[0] / 4 - 1, input_size[1] / 4 - 1]]
+        gcm_ks = [(ks[0] - 1 if ks[0] % 2 == 0 else ks[0], ks[1] - 1 if ks[1] % 2 == 0 else ks[1]) for ks in gcm_ks]
+        self.gcm1 = GlobalConvModule(2048, num_classes, gcm_ks[0])
+        self.gcm2 = GlobalConvModule(1024, num_classes, gcm_ks[1])
+        self.gcm3 = GlobalConvModule(512, num_classes, gcm_ks[2])
+        self.gcm4 = GlobalConvModule(256, num_classes, gcm_ks[3])
 
         self.brm1 = BoundaryRefineModule(num_classes)
         self.brm2 = BoundaryRefineModule(num_classes)
@@ -88,6 +95,6 @@ class GCN(nn.Module):
         fs2 = self.brm6(F.upsample_bilinear(fs1, fm2.size()[2:]) + gcfm3)  # 64
         fs3 = self.brm7(F.upsample_bilinear(fs2, fm1.size()[2:]) + gcfm4)  # 128
         fs4 = self.brm8(F.upsample_bilinear(fs3, fm0.size()[2:]))  # 256
-        out = self.brm9(F.upsample_bilinear(fs4, x.size()[2:]))  # 512
+        out = self.brm9(F.upsample_bilinear(fs4, self.input_size))  # 512
 
         return out

@@ -45,7 +45,7 @@ val_args = {
 
 
 def main():
-    net = GCN(num_classes=num_classes).cuda()
+    net = GCN(num_classes=num_classes, input_size=train_args['input_size']).cuda()
     if len(train_args['snapshot']) == 0:
         curr_epoch = 0
     else:
