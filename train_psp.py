@@ -28,12 +28,12 @@ pil_to_tensor = standard_transforms.ToTensor()
 train_record = {'best_val_loss': 1e20, 'corr_mean_iu': 0, 'corr_epoch': -1}
 
 train_args = {
-    'batch_size': 6,
+    'batch_size': 4,
     'epoch_num': 800,  # I stop training only when val loss doesn't seem to decrease anymore, so just set a large value.
-    'pretrained_lr': 1e-4,  # used for the pretrained layers of model
-    'new_lr': 1e-2,  # used for the newly added layers of model
+    'pretrained_lr': 1e-5,  # used for the pretrained layers of model
+    'new_lr': 1e-5,  # used for the newly added layers of model
     'weight_decay': 5e-4,
-    'snapshot': '',  # empty string denotes initial training, otherwise it should be a string of snapshot name
+    'snapshot': 'epoch_124_loss_0.6923_mean_iu_0.4920_lr_0.00010000.pth',  # empty string denotes initial training, otherwise it should be a string of snapshot name
     'print_freq': 50,
     'input_size': (224, 448),  # (height, width)
 }
@@ -97,23 +97,23 @@ def main():
     optimizer = optim.SGD([
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] == 'bias' and ('ppm' in name or 'final' in name or 'aux_logits' in name)],
-         'lr': train_args['new_lr']},
+         'lr': 2 * train_args['new_lr']},
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] != 'bias' and ('ppm' in name or 'final' in name or 'aux_logits' in name)],
          'lr': train_args['new_lr'], 'weight_decay': train_args['weight_decay']},
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] == 'bias' and not ('ppm' in name or 'final' in name or 'aux_logits' in name)],
-         'lr': train_args['pretrained_lr']},
+         'lr': 2 * train_args['pretrained_lr']},
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] != 'bias' and not ('ppm' in name or 'final' in name or 'aux_logits' in name)],
          'lr': train_args['pretrained_lr'], 'weight_decay': train_args['weight_decay']}
     ], momentum=0.9, nesterov=True)
 
     if len(train_args['snapshot']) > 0:
-        optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, 'opt_' + train_args['snapshot'])))
-        optimizer.param_groups[0]['lr'] = train_args['new_lr']
+        optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + train_args['snapshot'])))
+        optimizer.param_groups[0]['lr'] = 2 * train_args['new_lr']
         optimizer.param_groups[1]['lr'] = train_args['new_lr']
-        optimizer.param_groups[2]['lr'] = train_args['pretrained_lr']
+        optimizer.param_groups[2]['lr'] = 2 * train_args['pretrained_lr']
         optimizer.param_groups[3]['lr'] = train_args['pretrained_lr']
 
     if not os.path.exists(ckpt_path):

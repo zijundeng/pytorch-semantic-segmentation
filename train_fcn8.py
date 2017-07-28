@@ -97,13 +97,13 @@ def main():
     optimizer = optim.SGD([
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] == 'bias' and 'fconv' in name],
-         'lr': train_args['new_lr']},
+         'lr': 2 * train_args['new_lr']},
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] != 'bias' and 'fconv' in name],
          'lr': train_args['new_lr'], 'weight_decay': train_args['weight_decay']},
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] == 'bias' and 'fconv' not in name],
-         'lr': train_args['pretrained_lr']},
+         'lr': 2 * train_args['pretrained_lr']},
         {'params': [param for name, param in net.named_parameters() if
                     name[-4:] != 'bias' and 'fconv' not in name],
          'lr': train_args['pretrained_lr'], 'weight_decay': train_args['weight_decay']}
@@ -111,9 +111,9 @@ def main():
 
     if len(train_args['snapshot']) > 0:
         optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + train_args['snapshot'])))
-        optimizer.param_groups[0]['lr'] = train_args['new_lr']
+        optimizer.param_groups[0]['lr'] = 2 * train_args['new_lr']
         optimizer.param_groups[1]['lr'] = train_args['new_lr']
-        optimizer.param_groups[2]['lr'] = train_args['pretrained_lr']
+        optimizer.param_groups[2]['lr'] = 2 * train_args['pretrained_lr']
         optimizer.param_groups[3]['lr'] = train_args['pretrained_lr']
 
     if not os.path.exists(ckpt_path):
