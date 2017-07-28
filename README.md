@@ -13,9 +13,9 @@ implemented in PyTorch.
 Use powerful visualization of TensorBoard for PyTorch. [Here](https://github.com/lanpa/tensorboard-pytorch)  to install.
 
 ## Usage
-1. Modify the **configuration.py** according to the hint in it.
-2. Run **split_train_val.py**.
-3. Set your model and training parameters in **train.py** and then run.
+1. Go to *models* directory and set the root path.
+2. Go to *datasets* directory and do following the README.
+3. Adjust the argument settings in *train_psp.py* (or train_fcn8.py, train_gcn.py) and run it.
 
 ## Reference
 I have borrowed some code from these nice repositories: [[1]](https://github.com/bodokaiser/piwise),
