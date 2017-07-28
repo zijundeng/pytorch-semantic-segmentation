@@ -7,6 +7,7 @@ implemented in PyTorch.
 2. U-Net
 3. SegNet
 4. PSPNet
+5. GCN (global convolutional network)
 
 ## Visualization
 Use powerful visualization of TensorBoard for PyTorch. [Here](https://github.com/lanpa/tensorboard-pytorch)  to install.
@@ -17,12 +18,12 @@ Use powerful visualization of TensorBoard for PyTorch. [Here](https://github.com
 3. Set your model and training parameters in **train.py** and then run.
 
 ## Reference
-1. I have borrowed some code from these nice repositories: [[1]](https://github.com/bodokaiser/piwise),
+I have borrowed some code from these nice repositories: [[1]](https://github.com/bodokaiser/piwise),
 [[2]](https://github.com/ycszen/pytorch-ss). Thank them for the sharing.
 
 ## TODO
-1. DeepLab
-2. CRFAsRNN
-3. More dataset
-4. And so on
-
+1. DeepLab v3
+2. RefineNet
+3. CRFAsRNN
+4. Some evaluation criterion (e.g. mIOU)
+5. More dataset
