@@ -33,11 +33,11 @@ class GlobalConvModule(nn.Module):
 
 
 class BoundaryRefineModule(nn.Module):
-    def __init__(self, in_dim):
+    def __init__(self, dim):
         super(BoundaryRefineModule, self).__init__()
         self.relu = nn.ReLU()
-        self.conv1 = nn.Conv2d(in_dim, in_dim, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(in_dim, in_dim, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(dim, dim, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(dim, dim, kernel_size=3, padding=1)
 
     def forward(self, x):
         residual = self.conv1(x)
@@ -50,8 +50,8 @@ class BoundaryRefineModule(nn.Module):
 class GCN(nn.Module):
     def __init__(self, num_classes, input_size, pretrained=True):
         super(GCN, self).__init__()
-        resnet = models.resnet152()
         self.input_size = input_size
+        resnet = models.resnet152()
         if pretrained:
             resnet.load_state_dict(torch.load(res152_path))
         self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu)
