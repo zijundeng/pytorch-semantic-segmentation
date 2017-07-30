@@ -3,6 +3,7 @@ import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
+from utils.training import initialize_weights
 from .config import res152_path
 
 
@@ -77,6 +78,9 @@ class GCN(nn.Module):
         self.brm7 = BoundaryRefineModule(num_classes)
         self.brm8 = BoundaryRefineModule(num_classes)
         self.brm9 = BoundaryRefineModule(num_classes)
+
+        initialize_weights(self.gcm1, self.gcm2, self.gcm3, self.gcm4, self.brm1, self.brm2, self.brm3,
+                           self.brm4, self.brm5, self.brm6, self.brm7, self.brm8, self.brm9)
 
     def forward(self, x):
         # if x: 512
