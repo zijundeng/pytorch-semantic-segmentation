@@ -16,24 +16,24 @@ from config import ckpt_path
 from datasets.cityscapes import CityScapes
 from datasets.cityscapes.config import num_classes, ignored_label
 from datasets.cityscapes.utils import colorize_mask
-from models import GCN
+from models import SegNet
 from utils.io import rmrf_mkdir
 from utils.loss import CrossEntropyLoss2d
 from utils.training import calculate_mean_iu
 
 cudnn.benchmark = True
-exp_name = 'gcn_cityscapes224*448'
+exp_name = 'segnet_cityscapes224*448'
 writer = SummaryWriter('exp/' + exp_name)
 pil_to_tensor = standard_transforms.ToTensor()
 train_record = {'best_val_loss': 1e20, 'corr_mean_iu': 0, 'corr_epoch': -1}
 
 train_args = {
-    'batch_size': 16,
+    'batch_size': 8,
     'epoch_num': 800,  # I stop training only when val loss doesn't seem to decrease anymore, so just set a large value.
-    'pretrained_lr': 1e-7,  # used for the pretrained layers of model
-    'new_lr': 1e-7,  # used for the newly added layers of model
+    'new_lr': 1e-5,  # used for the newly added layers of model
+    'pretrained_lr': 1e-5,  # used for the pretrained layers of model
     'weight_decay': 5e-4,
-    'snapshot': 'epoch_297_loss_0.8282_mean_iu_0.4390_lr_0.00000100.pth',  # empty string denotes initial training, otherwise it should be a string of snapshot name
+    'snapshot': 'epoch_17_loss_1.9163_mean_iu_0.2197_lr_0.00100000.pth',  # empty string denotes initial training, otherwise it should be a string of snapshot name
     'print_freq': 30,
     'input_size': (224, 448),  # (height, width)
 }
@@ -44,7 +44,7 @@ val_args = {
 
 
 def main():
-    net = GCN(num_classes=num_classes, input_size=train_args['input_size']).cuda()
+    net = SegNet(num_classes=num_classes).cuda()
     if len(train_args['snapshot']) == 0:
         curr_epoch = 0
     else:
@@ -95,16 +95,16 @@ def main():
     # don't use weight_decay for bias
     optimizer = optim.SGD([
         {'params': [param for name, param in net.named_parameters() if
-                    name[-4:] == 'bias' and ('gcm' in name or 'brm' in name)],
+                    name[-4:] == 'bias' and 'dec' in name],
          'lr': 2 * train_args['new_lr']},
         {'params': [param for name, param in net.named_parameters() if
-                    name[-4:] != 'bias' and ('gcm' in name or 'brm' in name)],
+                    name[-4:] != 'bias' and 'dec' in name],
          'lr': train_args['new_lr'], 'weight_decay': train_args['weight_decay']},
         {'params': [param for name, param in net.named_parameters() if
-                    name[-4:] == 'bias' and not ('gcm' in name or 'brm' in name)],
+                    name[-4:] == 'bias' and 'dec' not in name],
          'lr': 2 * train_args['pretrained_lr']},
         {'params': [param for name, param in net.named_parameters() if
-                    name[-4:] != 'bias' and not ('gcm' in name or 'brm' in name)],
+                    name[-4:] != 'bias' and 'dec' not in name],
          'lr': train_args['pretrained_lr'], 'weight_decay': train_args['weight_decay']}
     ], momentum=0.9, nesterov=True)
 

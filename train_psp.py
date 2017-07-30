@@ -22,25 +22,25 @@ from utils.loss import CrossEntropyLoss2d
 from utils.training import calculate_mean_iu
 
 cudnn.benchmark = True
-exp_name = 'psp_cityscapes224*448'
+exp_name = 'psp_cityscapes350*700'
 writer = SummaryWriter('exp/' + exp_name)
 pil_to_tensor = standard_transforms.ToTensor()
 train_record = {'best_val_loss': 1e20, 'corr_mean_iu': 0, 'corr_epoch': -1}
 
 train_args = {
-    'batch_size': 6,
+    'batch_size': 3,
     'epoch_num': 800,  # I stop training only when val loss doesn't seem to decrease anymore, so just set a large value.
     'pretrained_lr': 1e-4,  # used for the pretrained layers of model
     'new_lr': 1e-2,  # used for the newly added layers of model
     'weight_decay': 5e-4,
     'snapshot': '',  # empty string denotes initial training, otherwise it should be a string of snapshot name
     'print_freq': 50,
-    'input_size': (224, 448),  # (height, width)
+    'input_size': (350, 700),  # (height, width)
 }
 
 val_args = {
-    'batch_size': 8,
-    'img_sample_rate': 0.15
+    'batch_size': 4,
+    'img_sample_rate': 0.1
 }
 
 
@@ -174,8 +174,8 @@ def validate(val_loader, net, criterion, optimizer, epoch, restore):
     val_loss = criterion(output_batches, label_batches)
     val_loss = val_loss.data[0]
 
-    output_batches = output_batches.cpu().data[:, :num_classes - 1, :, :]
-    label_batches = label_batches.cpu().data.numpy()
+    output_batches = output_batches.data[:, :num_classes - 1, :, :]
+    label_batches = label_batches.data.numpy()
     prediction_batches = output_batches.max(1)[1].squeeze_(1).numpy()
 
     mean_iu = calculate_mean_iu(prediction_batches, label_batches, num_classes)
