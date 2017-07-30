@@ -3,11 +3,14 @@ This repository contains some models for semantic segmentation and the pipeline 
 implemented in PyTorch.
 
 ## Models
-1. Vanilla FCN: FCN32, FCN16, FCN8, in the versions of VGG, ResNet and DenseNet respectively.
-2. U-Net
-3. SegNet
-4. PSPNet
-5. GCN (global convolutional network)
+1. Vanilla FCN: FCN32, FCN16, FCN8, in the versions of VGG, ResNet and DenseNet respectively. 
+([Fully convolutional networks for semantic segmentation](http://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Long_Fully_Convolutional_Networks_2015_CVPR_paper.pdf))
+2. U-Net ([U-net: Convolutional networks for biomedical image segmentation](https://arxiv.org/pdf/1505.04597))
+3. SegNet ([Segnet: A deep convolutional encoder-decoder architecture for image segmentation](https://arxiv.org/pdf/1511.00561))
+4. PSPNet ([Pyramid scene parsing network](https://arxiv.org/pdf/1612.01105))
+5. GCN ([Large Kernel Matters](https://arxiv.org/pdf/1703.02719))
+6. DUC, HDC ([understanding convolution for semantic segmentation](https://arxiv.org/pdf/1702.08502.pdf))
+7. Deformable Convolution Network (in PSPNet version) ([Deformable Convolutional Networks](https://arxiv.org/pdf/1703.06211))
 
 ## Visualization
 Use powerful visualization of TensorBoard for PyTorch. [Here](https://github.com/lanpa/tensorboard-pytorch)  to install.
@@ -25,5 +28,4 @@ I have borrowed some code from these nice repositories: [[1]](https://github.com
 1. DeepLab v3
 2. RefineNet
 3. CRFAsRNN
-4. Some evaluation criterion (e.g. mIOU)
-5. More dataset
+4. More dataset (e.g. ADE)
