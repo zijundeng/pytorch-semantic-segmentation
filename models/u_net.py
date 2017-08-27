@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from utils.training import initialize_weights
+from utils import initialize_weights
 
 
 class _EncoderBlock(nn.Module):
@@ -70,9 +70,9 @@ class UNet(nn.Module):
         enc3 = self.enc3(enc2)
         enc4 = self.enc4(enc3)
         center = self.center(enc4)
-        dec4 = self.dec4(torch.cat([center, F.upsample_bilinear(enc4, center.size()[2:])], 1))
-        dec3 = self.dec3(torch.cat([dec4, F.upsample_bilinear(enc3, dec4.size()[2:])], 1))
-        dec2 = self.dec2(torch.cat([dec3, F.upsample_bilinear(enc2, dec3.size()[2:])], 1))
-        dec1 = self.dec1(torch.cat([dec2, F.upsample_bilinear(enc1, dec2.size()[2:])], 1))
+        dec4 = self.dec4(torch.cat([center, F.upsample(enc4, center.size()[2:], mode='bilinear')], 1))
+        dec3 = self.dec3(torch.cat([dec4, F.upsample(enc3, dec4.size()[2:], mode='bilinear')], 1))
+        dec2 = self.dec2(torch.cat([dec3, F.upsample(enc2, dec3.size()[2:], mode='bilinear')], 1))
+        dec1 = self.dec1(torch.cat([dec2, F.upsample(enc1, dec2.size()[2:], mode='bilinear')], 1))
         final = self.final(dec1)
-        return F.upsample_bilinear(final, x.size()[2:])
+        return F.upsample(final, x.size()[2:], mode='bilinear')

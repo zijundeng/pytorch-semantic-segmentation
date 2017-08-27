@@ -37,18 +37,8 @@ class MaskToTensor(object):
 
 class FreeScale(object):
     def __init__(self, size, interpolation=Image.BILINEAR):
-        self.size = size  # (w, h)
+        self.size = tuple(reversed(size))  # size: (h, w)
         self.interpolation = interpolation
 
     def __call__(self, img):
         return img.resize(self.size, self.interpolation)
-
-
-class ChangeLabel(object):
-    def __init__(self, ori_label, new_label):
-        self.ori_label = ori_label
-        self.new_label = new_label
-
-    def __call__(self, mask):
-        mask[mask == self.ori_label] = self.new_label
-        return mask

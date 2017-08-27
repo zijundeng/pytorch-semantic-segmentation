@@ -5,9 +5,9 @@ from torchvision import models
 from .config import res152_path
 
 
-class DenseUpsamplingConvModule(nn.Module):
+class _DenseUpsamplingConvModule(nn.Module):
     def __init__(self, down_factor, in_dim, num_classes):
-        super(DenseUpsamplingConvModule, self).__init__()
+        super(_DenseUpsamplingConvModule, self).__init__()
         upsample_dim = (down_factor ** 2) * num_classes
         self.conv = nn.Conv2d(in_dim, upsample_dim, kernel_size=3, padding=1)
         self.bn = nn.BatchNorm2d(upsample_dim)
@@ -50,7 +50,7 @@ class ResNetDUC(nn.Module):
             elif 'downsample.0' in n:
                 m.stride = (1, 1)
 
-        self.duc = DenseUpsamplingConvModule(8, 2048, num_classes)
+        self.duc = _DenseUpsamplingConvModule(8, 2048, num_classes)
 
     def forward(self, x):
         x = self.layer0(x)
@@ -90,7 +90,7 @@ class ResNetDUCHDC(nn.Module):
             self.layer4[idx].conv2.dilation = (layer4_group_config[idx], layer4_group_config[idx])
             self.layer4[idx].conv2.padding = (layer4_group_config[idx], layer4_group_config[idx])
 
-        self.duc = DenseUpsamplingConvModule(8, 2048, num_classes)
+        self.duc = _DenseUpsamplingConvModule(8, 2048, num_classes)
 
     def forward(self, x):
         x = self.layer0(x)

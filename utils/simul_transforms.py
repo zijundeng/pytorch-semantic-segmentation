@@ -29,7 +29,7 @@ class RandomCrop(object):
 
         assert img.size == mask.size
         w, h = img.size
-        th, tw  = self.size
+        th, tw = self.size
         if w == tw and h == th:
             return img, mask
         if w < tw or h < th:
@@ -64,11 +64,11 @@ class RandomHorizontallyFlip(object):
 
 class FreeScale(object):
     def __init__(self, size, interpolation=Image.NEAREST):
-        self.size = size  # (h, w)
+        self.size = tuple(reversed(size))  # size: (h, w)
         self.interpolation = interpolation
 
     def __call__(self, img, mask):
-        return img.resize((self.size[1], self.size[0]), self.interpolation), mask.resize(self.size, self.interpolation)
+        return img.resize(self.size, self.interpolation), mask.resize(self.size, self.interpolation)
 
 
 class Scale(object):

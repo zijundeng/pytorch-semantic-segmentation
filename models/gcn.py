@@ -3,17 +3,17 @@ import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
-from utils.training import initialize_weights
+from utils import initialize_weights
 from .config import res152_path
 
 
 # many are borrowed from https://github.com/ycszen/pytorch-ss/blob/master/gcn.py
-class GlobalConvModule(nn.Module):
+class _GlobalConvModule(nn.Module):
     def __init__(self, in_dim, out_dim, kernel_size):
         pad0 = (kernel_size[0] - 1) / 2
         pad1 = (kernel_size[1] - 1) / 2
         # kernel size had better be odd number so as to avoid alignment error
-        super(GlobalConvModule, self).__init__()
+        super(_GlobalConvModule, self).__init__()
         self.conv_l1 = nn.Conv2d(in_dim, out_dim, kernel_size=(kernel_size[0], 1),
                                  padding=(pad0, 0))
         self.conv_l2 = nn.Conv2d(out_dim, out_dim, kernel_size=(1, kernel_size[1]),
@@ -32,10 +32,10 @@ class GlobalConvModule(nn.Module):
         return x
 
 
-class BoundaryRefineModule(nn.Module):
+class _BoundaryRefineModule(nn.Module):
     def __init__(self, dim):
-        super(BoundaryRefineModule, self).__init__()
-        self.relu = nn.ReLU()
+        super(_BoundaryRefineModule, self).__init__()
+        self.relu = nn.ReLU(inplace=True)
         self.conv1 = nn.Conv2d(dim, dim, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(dim, dim, kernel_size=3, padding=1)
 
@@ -60,24 +60,20 @@ class GCN(nn.Module):
         self.layer3 = resnet.layer3
         self.layer4 = resnet.layer4
 
-        #  use large kernel with odd size
-        gcm_ks = [[input_size[0] / 32 - 1, input_size[1] / 32 - 1], [input_size[0] / 16 - 1, input_size[1] / 16 - 1],
-                  [input_size[0] / 8 - 1, input_size[1] / 8 - 1], [input_size[0] / 4 - 1, input_size[1] / 4 - 1]]
-        gcm_ks = [(ks[0] - 1 if ks[0] % 2 == 0 else ks[0], ks[1] - 1 if ks[1] % 2 == 0 else ks[1]) for ks in gcm_ks]
-        self.gcm1 = GlobalConvModule(2048, num_classes, gcm_ks[0])
-        self.gcm2 = GlobalConvModule(1024, num_classes, gcm_ks[1])
-        self.gcm3 = GlobalConvModule(512, num_classes, gcm_ks[2])
-        self.gcm4 = GlobalConvModule(256, num_classes, gcm_ks[3])
+        self.gcm1 = _GlobalConvModule(2048, num_classes, (7, 7))
+        self.gcm2 = _GlobalConvModule(1024, num_classes, (7, 7))
+        self.gcm3 = _GlobalConvModule(512, num_classes, (7, 7))
+        self.gcm4 = _GlobalConvModule(256, num_classes, (7, 7))
 
-        self.brm1 = BoundaryRefineModule(num_classes)
-        self.brm2 = BoundaryRefineModule(num_classes)
-        self.brm3 = BoundaryRefineModule(num_classes)
-        self.brm4 = BoundaryRefineModule(num_classes)
-        self.brm5 = BoundaryRefineModule(num_classes)
-        self.brm6 = BoundaryRefineModule(num_classes)
-        self.brm7 = BoundaryRefineModule(num_classes)
-        self.brm8 = BoundaryRefineModule(num_classes)
-        self.brm9 = BoundaryRefineModule(num_classes)
+        self.brm1 = _BoundaryRefineModule(num_classes)
+        self.brm2 = _BoundaryRefineModule(num_classes)
+        self.brm3 = _BoundaryRefineModule(num_classes)
+        self.brm4 = _BoundaryRefineModule(num_classes)
+        self.brm5 = _BoundaryRefineModule(num_classes)
+        self.brm6 = _BoundaryRefineModule(num_classes)
+        self.brm7 = _BoundaryRefineModule(num_classes)
+        self.brm8 = _BoundaryRefineModule(num_classes)
+        self.brm9 = _BoundaryRefineModule(num_classes)
 
         initialize_weights(self.gcm1, self.gcm2, self.gcm3, self.gcm4, self.brm1, self.brm2, self.brm3,
                            self.brm4, self.brm5, self.brm6, self.brm7, self.brm8, self.brm9)

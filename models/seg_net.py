@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torchvision import models
 
-from utils.training import initialize_weights
+from utils import initialize_weights
 from .config import vgg19_bn_path
 
 

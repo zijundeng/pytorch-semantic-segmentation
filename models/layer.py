@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch import nn
 
 
+# just a try, not recommend to use
 class Conv2dDeformable(nn.Module):
     def __init__(self, regular_filter, cuda=True):
         super(Conv2dDeformable, self).__init__()
