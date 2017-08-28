@@ -17,7 +17,7 @@ from models import *
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
 ckpt_path = '../ckpt'
-exp_name = 'fcn8vgg-voc-arbitrary-sum-new'
+exp_name = 'fcn8vgg-voc-arbitrary'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
@@ -53,6 +53,8 @@ def main(train_args):
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     train_simul_transform = simul_transforms.RandomHorizontallyFlip()
+    # train_simul_transform = None  # TODO
+
     input_transform = standard_transforms.Compose([
         standard_transforms.ToTensor(),
         standard_transforms.Normalize(*mean_std)
@@ -81,7 +83,7 @@ def main(train_args):
          'lr': 2 * train_args['lr']},
         {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
          'lr': train_args['lr'], 'weight_decay': train_args['weight_decay']}
-    ], momentum=train_args['momentum'])
+    ], momentum=train_args['momentum'], nesterov=True)
 
     if len(train_args['snapshot']) > 0:
         optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + train_args['snapshot'])))
@@ -140,7 +142,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         gts = Variable(gts, volatile=True).cuda()
 
         outputs = net(inputs)
-        predictions = outputs.data[:, :voc.num_classes - 1, :, :].max(1)[1].squeeze_(1).squeeze_(0).cpu().numpy()
+        predictions = outputs.data.max(1)[1].squeeze_(1).squeeze_(0).cpu().numpy()
 
         val_loss.update(criterion(outputs, gts).data[0], inputs.size(0))
 

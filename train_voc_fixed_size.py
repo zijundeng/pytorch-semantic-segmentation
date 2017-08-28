@@ -25,7 +25,7 @@ args = {
     'model': FCN8VGG,
     'train_batch_size': 16,
     'epoch_num': 500,
-    'lr': 1e-4,
+    'lr': 1e-5,
     'weight_decay': 5e-4,
     'input_size': (320, 500),
     'momentum': 0.99,
@@ -150,7 +150,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         gts = Variable(gts, volatile=True).cuda()
 
         outputs = net(inputs)
-        predictions = outputs.data[:, :voc.num_classes - 1, :, :].max(1)[1].squeeze_(1).cpu().numpy()
+        predictions = outputs.data.max(1)[1].squeeze_(1).cpu().numpy()
 
         val_loss.update(criterion(outputs, gts).data[0], inputs.size(0))
 
