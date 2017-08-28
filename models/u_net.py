@@ -17,7 +17,7 @@ class _EncoderBlock(nn.Module):
             nn.ReLU(inplace=True),
         ]
         if dropout:
-            layers.append(nn.Dropout())
+            layers.append(nn.Dropout(inplace=True))
         layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
         self.encode = nn.Sequential(*layers)
 

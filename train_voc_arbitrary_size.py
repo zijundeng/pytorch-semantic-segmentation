@@ -17,16 +17,16 @@ from models import *
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
 ckpt_path = '../ckpt'
-exp_name = 'fcn8vgg-voc-arbitrary'
+exp_name = 'fcn8vgg-voc-arbitrary-sum-new'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
     'model': FCN8VGG,
     'epoch_num': 300,
-    'lr': 1e-5,
+    'lr': 1e-10,
     'weight_decay': 5e-4,
     'momentum': 0.99,
-    'lr_patience': 3,
+    'lr_patience': 100,
     'snapshot': '',  # empty string denotes learning from scratch
     'print_freq': 20,
     'val_save_to_img_file': False,
@@ -74,14 +74,14 @@ def main(train_args):
     val_set = voc.VOC('val', transform=input_transform, target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=1, num_workers=4, shuffle=False)
 
-    criterion = CrossEntropyLoss2d(ignore_index=voc.ignore_label).cuda()
+    criterion = CrossEntropyLoss2d(size_average=False, ignore_index=voc.ignore_label).cuda()
 
     optimizer = optim.SGD([
         {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias'],
          'lr': 2 * train_args['lr']},
         {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
          'lr': train_args['lr'], 'weight_decay': train_args['weight_decay']}
-    ], momentum=train_args['momentum'], nesterov=True)
+    ], momentum=train_args['momentum'])
 
     if len(train_args['snapshot']) > 0:
         optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + train_args['snapshot'])))

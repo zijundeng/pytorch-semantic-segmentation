@@ -10,6 +10,7 @@ from .config import res152_path
 # many are borrowed from https://github.com/ycszen/pytorch-ss/blob/master/gcn.py
 class _GlobalConvModule(nn.Module):
     def __init__(self, in_dim, out_dim, kernel_size):
+        super(_GlobalConvModule, self).__init__()
         pad0 = (kernel_size[0] - 1) / 2
         pad1 = (kernel_size[1] - 1) / 2
         # kernel size had better be odd number so as to avoid alignment error
