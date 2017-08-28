@@ -72,8 +72,8 @@ class FCN8VGG(_FCN8Base):
         score5.weight.data.zero_()
         score5.bias.data.zero_()
         self.score5 = nn.Sequential(
-            conv_fc6, nn.ReLU(inplace=True), nn.Dropout(inplace=True),
-            conv_fc7, nn.ReLU(inplace=True), nn.Dropout(inplace=True),
+            conv_fc6, nn.ReLU(inplace=True), nn.Dropout(),
+            conv_fc7, nn.ReLU(inplace=True), nn.Dropout(),
             score5
         )
 
@@ -107,16 +107,16 @@ class FCN8DenseNet(_FCN8Base):
         self.features5 = nn.Sequential(*features[10:])
         self.score3 = nn.Sequential(
             nn.BatchNorm2d(256),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.Conv2d(256, num_classes, kernel_size=1)
         )
         self.score4 = nn.Sequential(
             nn.BatchNorm2d(896),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.Conv2d(896, num_classes, kernel_size=1)
         )
         self.score5 = nn.Sequential(
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.Conv2d(1920, num_classes, kernel_size=1)
         )
         initialize_weights(self.score3, self.score4, self.score5)

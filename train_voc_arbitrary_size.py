@@ -9,12 +9,15 @@ from torch import optim
 from torch.autograd import Variable
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
+from torch.backends import cudnn
 
 import utils.simul_transforms as simul_transforms
 import utils.transforms as extended_transforms
 from datasets import voc
 from models import *
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
+
+cudnn.benchmark = True
 
 ckpt_path = '../ckpt'
 exp_name = 'fcn8vgg-voc-arbitrary'
@@ -52,8 +55,8 @@ def main(train_args):
     net.train()
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    train_simul_transform = simul_transforms.RandomHorizontallyFlip()
-    # train_simul_transform = None  # TODO
+    # train_simul_transform = simul_transforms.RandomHorizontallyFlip()
+    train_simul_transform = None  # TODO
 
     input_transform = standard_transforms.Compose([
         standard_transforms.ToTensor(),

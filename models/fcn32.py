@@ -46,8 +46,8 @@ class FCN32VGG(_FCN32Base):
         score5.weight.data.zero_()
         score5.bias.data.zero_()
         self.score5 = nn.Sequential(
-            conv_fc6, nn.ReLU(inplace=True), nn.Dropout(inplace=True),
-            conv_fc7, nn.ReLU(inplace=True), nn.Dropout(inplace=True),
+            conv_fc6, nn.ReLU(inplace=True), nn.Dropout(),
+            conv_fc7, nn.ReLU(inplace=True), nn.Dropout(),
             score5
         )
 
@@ -73,7 +73,7 @@ class FCN32DenseNet(_FCN32Base):
             dense.load_state_dict(torch.load(dense201_path))
         self.features5 = dense.features
         self.score5 = nn.Sequential(
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.Conv2d(1920, num_classes, kernel_size=1)
         )
         initialize_weights(self.score5)
