@@ -8,6 +8,7 @@ import torchvision.utils as vutils
 from tensorboard import SummaryWriter
 from torch import optim
 from torch.autograd import Variable
+from torch.backends import cudnn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
@@ -17,24 +18,26 @@ from datasets import cityscapes
 from models import *
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
-ckpt_path = '../ckpt'
-exp_name = 'fcn8vgg-cityscapes'
+cudnn.benchmark = True
+
+ckpt_path = '../../ckpt'
+exp_name = 'cityscapes-fcn8s'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
-    'model': FCN8VGG,
+    'model': FCN8s,
     'train_batch_size': 16,
     'epoch_num': 500,
-    'lr': 1e-5,
+    'lr': 2e-5,
     'weight_decay': 5e-4,
     'input_size': (256, 512),
     'momentum': 0.99,
-    'lr_patience': 3,
+    'lr_patience': 3,  # large patience denotes fixed lr
     'snapshot': '',  # empty string denotes no snapshot
     'print_freq': 20,
     'val_batch_size': 32,
     'val_save_to_img_file': False,
-    'val_img_sample_rate': 0.05
+    'val_img_sample_rate': 0.05  # randomly sample some validation results to display
 }
 
 
@@ -77,10 +80,10 @@ def main(train_args):
     ])
     visualize = standard_transforms.ToTensor()
 
-    train_set = cityscapes.CityScapes('coarse', 'train', simul_transform=train_simul_transform,
+    train_set = cityscapes.CityScapes('fine', 'train', simul_transform=train_simul_transform,
                                       transform=input_transform, target_transform=target_transform)
     train_loader = DataLoader(train_set, batch_size=train_args['train_batch_size'], num_workers=8, shuffle=True)
-    val_set = cityscapes.CityScapes('coarse', 'val', simul_transform=val_simul_transform, transform=input_transform,
+    val_set = cityscapes.CityScapes('fine', 'val', simul_transform=val_simul_transform, transform=input_transform,
                                     target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=train_args['val_batch_size'], num_workers=8, shuffle=False)
 
@@ -211,7 +214,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
 
     print '--------------------------------------------------------------------'
 
-    writer.add_scalar('loss', val_loss.avg, epoch)
+    writer.add_scalar('val_loss', val_loss.avg, epoch)
     writer.add_scalar('acc', acc, epoch)
     writer.add_scalar('acc_cls', acc_cls, epoch)
     writer.add_scalar('mean_iu', mean_iu, epoch)

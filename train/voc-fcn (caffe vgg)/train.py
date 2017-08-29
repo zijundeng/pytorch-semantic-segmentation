@@ -7,11 +7,10 @@ import torchvision.utils as vutils
 from tensorboard import SummaryWriter
 from torch import optim
 from torch.autograd import Variable
+from torch.backends import cudnn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
-from torch.backends import cudnn
 
-import utils.simul_transforms as simul_transforms
 import utils.transforms as extended_transforms
 from datasets import voc
 from models import *
@@ -19,21 +18,21 @@ from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
 cudnn.benchmark = True
 
-ckpt_path = '../ckpt'
-exp_name = 'fcn8vgg-voc-arbitrary'
+ckpt_path = '../../ckpt'
+exp_name = 'voc-fcn8s'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
-    'model': FCN8VGG,
+    'model': FCN8s,
     'epoch_num': 300,
     'lr': 1e-10,
     'weight_decay': 5e-4,
     'momentum': 0.99,
-    'lr_patience': 100,
+    'lr_patience': 100,  # large patience denotes fixed lr
     'snapshot': '',  # empty string denotes learning from scratch
     'print_freq': 20,
     'val_save_to_img_file': False,
-    'val_img_sample_rate': 0.1
+    'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
 
 
@@ -54,27 +53,28 @@ def main(train_args):
 
     net.train()
 
-    mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    # train_simul_transform = simul_transforms.RandomHorizontallyFlip()
-    train_simul_transform = None  # TODO
+    mean_std = ([103.939, 116.779, 123.68], [1.0, 1.0, 1.0])
 
     input_transform = standard_transforms.Compose([
+        extended_transforms.FlipChannels(),
         standard_transforms.ToTensor(),
+        standard_transforms.Lambda(lambda x: x.mul_(255)),
         standard_transforms.Normalize(*mean_std)
     ])
     target_transform = extended_transforms.MaskToTensor()
     restore_transform = standard_transforms.Compose([
         extended_transforms.DeNormalize(*mean_std),
-        standard_transforms.ToPILImage()
+        standard_transforms.Lambda(lambda x: x.div_(255)),
+        standard_transforms.ToPILImage(),
+        extended_transforms.FlipChannels(),
     ])
     visualize = standard_transforms.Compose([
-        standard_transforms.Scale(320),
-        standard_transforms.CenterCrop(320),
+        standard_transforms.Scale(400),
+        standard_transforms.CenterCrop(400),
         standard_transforms.ToTensor()
     ])
 
-    train_set = voc.VOC('train', simul_transform=train_simul_transform, transform=input_transform,
-                        target_transform=target_transform)
+    train_set = voc.VOC('train', transform=input_transform, target_transform=target_transform)
     train_loader = DataLoader(train_set, batch_size=1, num_workers=4, shuffle=True)
     val_set = voc.VOC('val', transform=input_transform, target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=1, num_workers=4, shuffle=False)
@@ -86,7 +86,7 @@ def main(train_args):
          'lr': 2 * train_args['lr']},
         {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
          'lr': train_args['lr'], 'weight_decay': train_args['weight_decay']}
-    ], momentum=train_args['momentum'], nesterov=True)
+    ], momentum=train_args['momentum'])
 
     if len(train_args['snapshot']) > 0:
         optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + train_args['snapshot'])))
@@ -202,7 +202,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
 
     print '--------------------------------------------------------------------'
 
-    writer.add_scalar('loss', val_loss.avg, epoch)
+    writer.add_scalar('val_loss', val_loss.avg, epoch)
     writer.add_scalar('acc', acc, epoch)
     writer.add_scalar('acc_cls', acc_cls, epoch)
     writer.add_scalar('mean_iu', mean_iu, epoch)
