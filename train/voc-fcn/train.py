@@ -2,7 +2,6 @@ import datetime
 import os
 import random
 
-import numpy as np
 import torchvision.transforms as standard_transforms
 import torchvision.utils as vutils
 from tensorboard import SummaryWriter
@@ -12,36 +11,32 @@ from torch.backends import cudnn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
-import utils.simul_transforms as simul_transforms
 import utils.transforms as extended_transforms
-from datasets import cityscapes
+from datasets import voc
 from models import *
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
 cudnn.benchmark = True
 
 ckpt_path = '../../ckpt'
-exp_name = 'cityscapes-fcn8s'
+exp_name = 'voc-fcn8s'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
-    'train_batch_size': 16,
-    'epoch_num': 500,
-    'lr': 4e-10,
-    'weight_decay': 5e-4,
-    'input_size': (256, 512),
+    'epoch_num': 300,
+    'lr': 1e-10,
+    'weight_decay': 1e-4,
     'momentum': 0.95,
     'lr_patience': 100,  # large patience denotes fixed lr
-    'snapshot': '',  # empty string denotes no snapshot
+    'snapshot': '',  # empty string denotes learning from scratch
     'print_freq': 20,
-    'val_batch_size': 16,
     'val_save_to_img_file': False,
-    'val_img_sample_rate': 0.05  # randomly sample some validation results to display
+    'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
 
 
 def main(train_args):
-    net = FCN8s(num_classes=cityscapes.num_classes).cuda()
+    net = FCN8s(num_classes=voc.num_classes).cuda()
 
     if len(train_args['snapshot']) == 0:
         curr_epoch = 1
@@ -58,16 +53,7 @@ def main(train_args):
     net.train()
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    short_size = int(min(train_args['input_size']) / 0.875)
-    train_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(short_size),
-        simul_transforms.RandomCrop(train_args['input_size']),
-        simul_transforms.RandomHorizontallyFlip()
-    ])
-    val_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(short_size),
-        simul_transforms.CenterCrop(train_args['input_size'])
-    ])
+
     input_transform = standard_transforms.Compose([
         standard_transforms.ToTensor(),
         standard_transforms.Normalize(*mean_std)
@@ -75,25 +61,27 @@ def main(train_args):
     target_transform = extended_transforms.MaskToTensor()
     restore_transform = standard_transforms.Compose([
         extended_transforms.DeNormalize(*mean_std),
-        standard_transforms.ToPILImage()
+        standard_transforms.ToPILImage(),
     ])
-    visualize = standard_transforms.ToTensor()
+    visualize = standard_transforms.Compose([
+        standard_transforms.Scale(400),
+        standard_transforms.CenterCrop(400),
+        standard_transforms.ToTensor()
+    ])
 
-    train_set = cityscapes.CityScapes('fine', 'train', simul_transform=train_simul_transform,
-                                      transform=input_transform, target_transform=target_transform)
-    train_loader = DataLoader(train_set, batch_size=train_args['train_batch_size'], num_workers=8, shuffle=True)
-    val_set = cityscapes.CityScapes('fine', 'val', simul_transform=val_simul_transform, transform=input_transform,
-                                    target_transform=target_transform)
-    val_loader = DataLoader(val_set, batch_size=train_args['val_batch_size'], num_workers=8, shuffle=False)
+    train_set = voc.VOC('train', transform=input_transform, target_transform=target_transform)
+    train_loader = DataLoader(train_set, batch_size=1, num_workers=4, shuffle=True)
+    val_set = voc.VOC('val', transform=input_transform, target_transform=target_transform)
+    val_loader = DataLoader(val_set, batch_size=1, num_workers=4, shuffle=False)
 
-    criterion = CrossEntropyLoss2d(size_average=False, ignore_index=cityscapes.ignore_label).cuda()
+    criterion = CrossEntropyLoss2d(size_average=False, ignore_index=voc.ignore_label).cuda()
 
-    optimizer = optim.SGD([
+    optimizer = optim.Adam([
         {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias'],
          'lr': 2 * train_args['lr']},
         {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
          'lr': train_args['lr'], 'weight_decay': train_args['weight_decay']}
-    ], momentum=train_args['momentum'])
+    ], betas=(train_args['momentum'], 0.999))
 
     if len(train_args['snapshot']) > 0:
         optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + train_args['snapshot'])))
@@ -124,7 +112,7 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args):
         optimizer.zero_grad()
         outputs = net(inputs)
         assert outputs.size()[2:] == labels.size()[1:]
-        assert outputs.size()[1] == cityscapes.num_classes
+        assert outputs.size()[1] == voc.num_classes
 
         loss = criterion(outputs, labels) / N
         loss.backward()
@@ -154,22 +142,18 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         gts = Variable(gts, volatile=True).cuda()
 
         outputs = net(inputs)
-        predictions = outputs.data.max(1)[1].squeeze_(1).cpu().numpy()
+        predictions = outputs.data.max(1)[1].squeeze_(1).squeeze_(0).cpu().numpy()
 
         val_loss.update(criterion(outputs, gts).data[0] / N, N)
 
-        for i in inputs:
-            if random.random() > train_args['val_img_sample_rate']:
-                inputs_all.append(None)
-            else:
-                inputs_all.append(i.data.cpu())
-        gts_all.append(gts.data.cpu().numpy())
+        if random.random() > train_args['val_img_sample_rate']:
+            inputs_all.append(None)
+        else:
+            inputs_all.append(inputs.data.squeeze_(0).cpu())
+        gts_all.append(gts.data.squeeze_(0).cpu().numpy())
         predictions_all.append(predictions)
 
-    gts_all = np.concatenate(gts_all)
-    predictions_all = np.concatenate(predictions_all)
-
-    acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, cityscapes.num_classes)
+    acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, voc.num_classes)
 
     if mean_iu > train_args['best_record']['mean_iu']:
         train_args['best_record']['val_loss'] = val_loss.avg
@@ -193,8 +177,8 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
             if data[0] is None:
                 continue
             input_pil = restore(data[0])
-            gt_pil = cityscapes.colorize_mask(data[1])
-            predictions_pil = cityscapes.colorize_mask(data[2])
+            gt_pil = voc.colorize_mask(data[1])
+            predictions_pil = voc.colorize_mask(data[2])
             if train_args['val_save_to_img_file']:
                 input_pil.save(os.path.join(to_save_dir, '%d_input.png' % idx))
                 predictions_pil.save(os.path.join(to_save_dir, '%d_prediction.png' % idx))

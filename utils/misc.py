@@ -83,3 +83,18 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+
+class PolyLR(object):
+    def __init__(self, optimizer, curr_iter, max_iter, lr_decay):
+        self.max_iter = float(max_iter)
+        self.init_lr_groups = []
+        for p in optimizer.param_groups:
+            self.init_lr_groups.append(p['lr'])
+        self.param_groups = optimizer.param_groups
+        self.curr_iter = curr_iter
+        self.lr_decay = lr_decay
+
+    def step(self):
+        for idx, p in enumerate(self.param_groups):
+            p['lr'] = self.init_lr_groups[idx] * (1 - self.curr_iter / self.max_iter) ** self.lr_decay

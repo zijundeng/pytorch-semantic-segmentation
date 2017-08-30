@@ -9,39 +9,38 @@ from tensorboard import SummaryWriter
 from torch import optim
 from torch.autograd import Variable
 from torch.backends import cudnn
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 import utils.simul_transforms as simul_transforms
 import utils.transforms as extended_transforms
-from datasets import cityscapes
+from datasets import voc
 from models import *
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
 cudnn.benchmark = True
 
 ckpt_path = '../../ckpt'
-exp_name = 'cityscapes-fcn8s'
+exp_name = 'voc-psp_net'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
-    'train_batch_size': 16,
-    'epoch_num': 500,
-    'lr': 4e-10,
-    'weight_decay': 5e-4,
+    'train_batch_size': 8,
+    'lr': 1e-2,
+    'lr_decay': 0.9,
+    'max_iter': 3e4,
     'input_size': (256, 512),
-    'momentum': 0.95,
-    'lr_patience': 100,  # large patience denotes fixed lr
-    'snapshot': '',  # empty string denotes no snapshot
+    'weight_decay': 1e-4,
+    'momentum': 0.9,
+    'snapshot': '',  # empty string denotes learning from scratch
     'print_freq': 20,
     'val_batch_size': 16,
     'val_save_to_img_file': False,
-    'val_img_sample_rate': 0.05  # randomly sample some validation results to display
+    'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
 
 
 def main(train_args):
-    net = FCN8s(num_classes=cityscapes.num_classes).cuda()
+    net = PSPNet(num_classes=voc.num_classes).cuda()
 
     if len(train_args['snapshot']) == 0:
         curr_epoch = 1
@@ -58,6 +57,7 @@ def main(train_args):
     net.train()
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+
     short_size = int(min(train_args['input_size']) / 0.875)
     train_simul_transform = simul_transforms.Compose([
         simul_transforms.Scale(short_size),
@@ -75,18 +75,20 @@ def main(train_args):
     target_transform = extended_transforms.MaskToTensor()
     restore_transform = standard_transforms.Compose([
         extended_transforms.DeNormalize(*mean_std),
-        standard_transforms.ToPILImage()
+        standard_transforms.ToPILImage(),
     ])
-    visualize = standard_transforms.ToTensor()
+    visualize = standard_transforms.Compose([
+        standard_transforms.Scale(400),
+        standard_transforms.CenterCrop(400),
+        standard_transforms.ToTensor()
+    ])
 
-    train_set = cityscapes.CityScapes('fine', 'train', simul_transform=train_simul_transform,
-                                      transform=input_transform, target_transform=target_transform)
+    train_set = voc.VOC('train', simul_transform=train_simul_transform, transform=input_transform, target_transform=target_transform)
     train_loader = DataLoader(train_set, batch_size=train_args['train_batch_size'], num_workers=8, shuffle=True)
-    val_set = cityscapes.CityScapes('fine', 'val', simul_transform=val_simul_transform, transform=input_transform,
-                                    target_transform=target_transform)
+    val_set = voc.VOC('val', simul_transform=val_simul_transform, transform=input_transform, target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=train_args['val_batch_size'], num_workers=8, shuffle=False)
 
-    criterion = CrossEntropyLoss2d(size_average=False, ignore_index=cityscapes.ignore_label).cuda()
+    criterion = CrossEntropyLoss2d(size_average=True, ignore_index=voc.ignore_label).cuda()
 
     optimizer = optim.SGD([
         {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias'],
@@ -104,41 +106,52 @@ def main(train_args):
     check_mkdir(os.path.join(ckpt_path, exp_name))
     open(os.path.join(ckpt_path, exp_name, str(datetime.datetime.now()) + '.txt'), 'w').write(str(train_args) + '\n\n')
 
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=train_args['lr_patience'], min_lr=1e-10, verbose=True)
-    for epoch in range(curr_epoch, train_args['epoch_num'] + 1):
-        train(train_loader, net, criterion, optimizer, epoch, train_args)
-        val_loss = validate(val_loader, net, criterion, optimizer, epoch, train_args, restore_transform, visualize)
-        scheduler.step(val_loss)
+    train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_loader, restore_transform, visualize)
 
 
-def train(train_loader, net, criterion, optimizer, epoch, train_args):
-    train_loss = AverageMeter()
-    curr_iter = (epoch - 1) * len(train_loader)
-    for i, data in enumerate(train_loader):
-        inputs, labels = data
-        assert inputs.size()[2:] == labels.size()[1:]
-        N = inputs.size(0)
-        inputs = Variable(inputs).cuda()
-        labels = Variable(labels).cuda()
+def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_loader, restore, visualize):
+    while True:
+        train_main_loss = AverageMeter()
+        train_aux_loss = AverageMeter()
+        curr_iter = (curr_epoch - 1) * len(train_loader)
+        for i, data in enumerate(train_loader):
+            optimizer.param_groups[0]['lr'] = 2 * train_args['lr'] * (1 - curr_iter / train_args['max_iter']) ** \
+                                                                     train_args['lr_decay']
+            optimizer.param_groups[1]['lr'] = train_args['lr'] * (1 - curr_iter / train_args['max_iter']) ** train_args[
+                'lr_decay']
 
-        optimizer.zero_grad()
-        outputs = net(inputs)
-        assert outputs.size()[2:] == labels.size()[1:]
-        assert outputs.size()[1] == cityscapes.num_classes
+            inputs, labels = data
+            assert inputs.size()[2:] == labels.size()[1:]
+            N = inputs.size(0) * inputs.size(2) * inputs.size(3)
+            inputs = Variable(inputs).cuda()
+            labels = Variable(labels).cuda()
 
-        loss = criterion(outputs, labels) / N
-        loss.backward()
-        optimizer.step()
+            optimizer.zero_grad()
+            outputs, aux = net(inputs)
+            assert outputs.size()[2:] == labels.size()[1:]
+            assert outputs.size()[1] == voc.num_classes
 
-        train_loss.update(loss.data[0], N)
+            main_loss = criterion(outputs, labels)
+            aux_loss = criterion(aux, labels)
+            loss = main_loss + 0.4 * aux_loss
+            loss.backward()
+            optimizer.step()
 
-        curr_iter += 1
-        writer.add_scalar('train_loss', train_loss.avg, curr_iter)
+            train_main_loss.update(main_loss.data[0], N)
+            train_aux_loss.update(aux_loss.data[0], N)
 
-        if (i + 1) % train_args['print_freq'] == 0:
-            print '[epoch %d], [iter %d / %d], [train loss %.5f]' % (
-                epoch, i + 1, len(train_loader), train_loss.avg
-            )
+            curr_iter += 1
+            writer.add_scalar('train_main_loss', train_main_loss.avg, curr_iter)
+            writer.add_scalar('train_aux_loss', train_aux_loss.avg, curr_iter)
+
+            if (i + 1) % train_args['print_freq'] == 0:
+                print '[epoch %d], [iter %d / %d], [train main loss %.5f], [train aux loss %.5f]. [lr %.10f]' % (
+                    curr_epoch, i + 1, len(train_loader), train_main_loss.avg, train_aux_loss.avg, optimizer.param_groups[1]['lr']
+                )
+            if curr_iter >= train_args['max_iter']:
+                return
+        validate(val_loader, net, criterion, optimizer, curr_epoch, train_args, restore, visualize)
+        curr_epoch += 1
 
 
 def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, visualize):
@@ -149,14 +162,14 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
 
     for vi, data in enumerate(val_loader):
         inputs, gts = data
-        N = inputs.size(0)
+        N = inputs.size(0) * inputs.size(2) * inputs.size(3)
         inputs = Variable(inputs, volatile=True).cuda()
         gts = Variable(gts, volatile=True).cuda()
 
         outputs = net(inputs)
         predictions = outputs.data.max(1)[1].squeeze_(1).cpu().numpy()
 
-        val_loss.update(criterion(outputs, gts).data[0] / N, N)
+        val_loss.update(criterion(outputs, gts).data[0], N)
 
         for i in inputs:
             if random.random() > train_args['val_img_sample_rate']:
@@ -169,7 +182,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
     gts_all = np.concatenate(gts_all)
     predictions_all = np.concatenate(predictions_all)
 
-    acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, cityscapes.num_classes)
+    acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, voc.num_classes)
 
     if mean_iu > train_args['best_record']['mean_iu']:
         train_args['best_record']['val_loss'] = val_loss.avg
@@ -193,8 +206,8 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
             if data[0] is None:
                 continue
             input_pil = restore(data[0])
-            gt_pil = cityscapes.colorize_mask(data[1])
-            predictions_pil = cityscapes.colorize_mask(data[2])
+            gt_pil = voc.colorize_mask(data[1])
+            predictions_pil = voc.colorize_mask(data[2])
             if train_args['val_save_to_img_file']:
                 input_pil.save(os.path.join(to_save_dir, '%d_input.png' % idx))
                 predictions_pil.save(os.path.join(to_save_dir, '%d_prediction.png' % idx))

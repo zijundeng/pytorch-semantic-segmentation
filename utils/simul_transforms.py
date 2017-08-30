@@ -1,3 +1,4 @@
+import math
 import numbers
 import random
 
@@ -63,12 +64,11 @@ class RandomHorizontallyFlip(object):
 
 
 class FreeScale(object):
-    def __init__(self, size, interpolation=Image.NEAREST):
+    def __init__(self, size):
         self.size = tuple(reversed(size))  # size: (h, w)
-        self.interpolation = interpolation
 
     def __call__(self, img, mask):
-        return img.resize(self.size, self.interpolation), mask.resize(self.size, self.interpolation)
+        return img.resize(self.size, Image.BILINEAR), mask.resize(self.size, Image.NEAREST)
 
 
 class Scale(object):
@@ -88,3 +88,37 @@ class Scale(object):
             oh = self.size
             ow = int(self.size * w / h)
             return img.resize((ow, oh), Image.BILINEAR), mask.resize((ow, oh), Image.NEAREST)
+
+
+class RandomSizedCrop(object):
+    def __init__(self, size):
+        self.size = tuple(reversed(size))
+
+    def __call__(self, img, mask):
+        assert img.size == mask.size
+        for attempt in range(10):
+            area = img.size[0] * img.size[1]
+            target_area = random.uniform(0.08, 1.0) * area
+            aspect_ratio = random.uniform(3. / 4, 4. / 3)
+
+            w = int(round(math.sqrt(target_area * aspect_ratio)))
+            h = int(round(math.sqrt(target_area / aspect_ratio)))
+
+            if random.random() < 0.5:
+                w, h = h, w
+
+            if w <= img.size[0] and h <= img.size[1]:
+                x1 = random.randint(0, img.size[0] - w)
+                y1 = random.randint(0, img.size[1] - h)
+
+                img = img.crop((x1, y1, x1 + w, y1 + h))
+                mask = mask.crop((x1, y1, x1 + w, y1 + h))
+                assert (img.size == (w, h))
+
+                return img.resize((self.size, self.size), Image.BILINEAR), mask.resize((self.size, self.size),
+                                                                                       Image.NEAREST)
+
+        # Fallback
+        scale = Scale(self.size)
+        crop = CenterCrop(self.size)
+        return crop(*scale(img, mask))

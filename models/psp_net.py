@@ -5,7 +5,7 @@ from torchvision import models
 
 from layer import Conv2dDeformable
 from utils import initialize_weights
-from .config import res152_path
+from .config import res101_path
 
 
 class _PyramidPoolingModule(nn.Module):
@@ -34,9 +34,9 @@ class PSPNet(nn.Module):
     def __init__(self, num_classes, pretrained=True, use_aux=True):
         super(PSPNet, self).__init__()
         self.use_aux = use_aux
-        resnet = models.resnet152()
+        resnet = models.resnet101()
         if pretrained:
-            resnet.load_state_dict(torch.load(res152_path))
+            resnet.load_state_dict(torch.load(res101_path))
         self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
         self.layer1, self.layer2, self.layer3, self.layer4 = resnet.layer1, resnet.layer2, resnet.layer3, resnet.layer4
 
@@ -61,7 +61,7 @@ class PSPNet(nn.Module):
         )
 
         if use_aux:
-            self.aux_logits = nn.Conv2d(256, num_classes, kernel_size=1)
+            self.aux_logits = nn.Conv2d(1024, num_classes, kernel_size=1)
             initialize_weights(self.aux_logits)
 
         initialize_weights(self.ppm, self.final)
@@ -124,7 +124,7 @@ class PSPNetDeform(nn.Module):
         )
 
         if use_aux:
-            self.aux_logits = nn.Conv2d(256, num_classes, kernel_size=1)
+            self.aux_logits = nn.Conv2d(1024, num_classes, kernel_size=1)
             initialize_weights(self.aux_logits)
 
         initialize_weights(self.ppm, self.final)

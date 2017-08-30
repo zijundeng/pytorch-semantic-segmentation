@@ -19,12 +19,11 @@ from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 cudnn.benchmark = True
 
 ckpt_path = '../../ckpt'
-exp_name = 'voc-fcn8s'
+exp_name = 'voc-fcn8s (caffe vgg)'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
-    'model': FCN8s,
-    'epoch_num': 300,
+    'epoch_num': 30,
     'lr': 1e-10,
     'weight_decay': 5e-4,
     'momentum': 0.99,
@@ -37,7 +36,7 @@ args = {
 
 
 def main(train_args):
-    net = train_args['model'](num_classes=voc.num_classes).cuda()
+    net = FCN8s(num_classes=voc.num_classes, caffe=True).cuda()
 
     if len(train_args['snapshot']) == 0:
         curr_epoch = 1
@@ -66,7 +65,7 @@ def main(train_args):
         extended_transforms.DeNormalize(*mean_std),
         standard_transforms.Lambda(lambda x: x.div_(255)),
         standard_transforms.ToPILImage(),
-        extended_transforms.FlipChannels(),
+        extended_transforms.FlipChannels()
     ])
     visualize = standard_transforms.Compose([
         standard_transforms.Scale(400),
@@ -110,6 +109,7 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args):
     for i, data in enumerate(train_loader):
         inputs, labels = data
         assert inputs.size()[2:] == labels.size()[1:]
+        N = inputs.size(0)
         inputs = Variable(inputs).cuda()
         labels = Variable(labels).cuda()
 
@@ -118,11 +118,11 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args):
         assert outputs.size()[2:] == labels.size()[1:]
         assert outputs.size()[1] == voc.num_classes
 
-        loss = criterion(outputs, labels)
+        loss = criterion(outputs, labels) / N
         loss.backward()
         optimizer.step()
 
-        train_loss.update(loss.data[0], inputs.size(0))
+        train_loss.update(loss.data[0], N)
 
         curr_iter += 1
         writer.add_scalar('train_loss', train_loss.avg, curr_iter)
@@ -141,13 +141,14 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
 
     for vi, data in enumerate(val_loader):
         inputs, gts = data
+        N = inputs.size(0)
         inputs = Variable(inputs, volatile=True).cuda()
         gts = Variable(gts, volatile=True).cuda()
 
         outputs = net(inputs)
         predictions = outputs.data.max(1)[1].squeeze_(1).squeeze_(0).cpu().numpy()
 
-        val_loss.update(criterion(outputs, gts).data[0], inputs.size(0))
+        val_loss.update(criterion(outputs, gts).data[0] / N, N)
 
         if random.random() > train_args['val_img_sample_rate']:
             inputs_all.append(None)
@@ -158,7 +159,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
 
     acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, voc.num_classes)
 
-    if val_loss.avg < train_args['best_record']:
+    if mean_iu > train_args['best_record']['mean_iu']:
         train_args['best_record']['val_loss'] = val_loss.avg
         train_args['best_record']['epoch'] = epoch
         train_args['best_record']['acc'] = acc
@@ -196,7 +197,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
     print '[epoch %d], [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f]' % (
         epoch, val_loss.avg, acc, acc_cls, mean_iu, fwavacc)
 
-    print '[best val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f], [epoch %d]' % (
+    print 'best record: [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f], [epoch %d]' % (
         train_args['best_record']['val_loss'], train_args['best_record']['acc'], train_args['best_record']['acc_cls'],
         train_args['best_record']['mean_iu'], train_args['best_record']['fwavacc'], train_args['best_record']['epoch'])
 

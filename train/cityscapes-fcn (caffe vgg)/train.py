@@ -21,16 +21,16 @@ from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 cudnn.benchmark = True
 
 ckpt_path = '../../ckpt'
-exp_name = 'cityscapes-fcn8s'
+exp_name = 'cityscapes-fcn8s (caffe vgg)'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
-    'train_batch_size': 16,
+    'train_batch_size': 12,
     'epoch_num': 500,
-    'lr': 4e-10,
+    'lr': 1e-10,
     'weight_decay': 5e-4,
     'input_size': (256, 512),
-    'momentum': 0.95,
+    'momentum': 0.99,
     'lr_patience': 100,  # large patience denotes fixed lr
     'snapshot': '',  # empty string denotes no snapshot
     'print_freq': 20,
@@ -41,7 +41,7 @@ args = {
 
 
 def main(train_args):
-    net = FCN8s(num_classes=cityscapes.num_classes).cuda()
+    net = FCN8s(num_classes=cityscapes.num_classes, caffe=True).cuda()
 
     if len(train_args['snapshot']) == 0:
         curr_epoch = 1
@@ -57,7 +57,8 @@ def main(train_args):
 
     net.train()
 
-    mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    mean_std = ([103.939, 116.779, 123.68], [1.0, 1.0, 1.0])
+
     short_size = int(min(train_args['input_size']) / 0.875)
     train_simul_transform = simul_transforms.Compose([
         simul_transforms.Scale(short_size),
@@ -69,13 +70,17 @@ def main(train_args):
         simul_transforms.CenterCrop(train_args['input_size'])
     ])
     input_transform = standard_transforms.Compose([
+        extended_transforms.FlipChannels(),
         standard_transforms.ToTensor(),
+        standard_transforms.Lambda(lambda x: x.mul_(255)),
         standard_transforms.Normalize(*mean_std)
     ])
     target_transform = extended_transforms.MaskToTensor()
     restore_transform = standard_transforms.Compose([
         extended_transforms.DeNormalize(*mean_std),
-        standard_transforms.ToPILImage()
+        standard_transforms.Lambda(lambda x: x.div_(255)),
+        standard_transforms.ToPILImage(),
+        extended_transforms.FlipChannels()
     ])
     visualize = standard_transforms.ToTensor()
 
@@ -88,12 +93,12 @@ def main(train_args):
 
     criterion = CrossEntropyLoss2d(size_average=False, ignore_index=cityscapes.ignore_label).cuda()
 
-    optimizer = optim.SGD([
+    optimizer = optim.Adam([
         {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias'],
          'lr': 2 * train_args['lr']},
         {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
          'lr': train_args['lr'], 'weight_decay': train_args['weight_decay']}
-    ], momentum=train_args['momentum'])
+    ], betas=(train_args['momentum'], 0.999))
 
     if len(train_args['snapshot']) > 0:
         optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + train_args['snapshot'])))
