@@ -1,4 +1,5 @@
 import datetime
+import math
 import os
 import random
 
@@ -25,15 +26,15 @@ writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
     'train_batch_size': 8,
-    'lr': 1e-2,
+    'lr': 1e-2 / (math.sqrt(16. / 8)),
     'lr_decay': 0.9,
     'max_iter': 3e4,
-    'input_size': (256, 512),
+    'input_size': 350,
     'weight_decay': 1e-4,
     'momentum': 0.9,
     'snapshot': '',  # empty string denotes learning from scratch
     'print_freq': 20,
-    'val_batch_size': 16,
+    'val_batch_size': 8,
     'val_save_to_img_file': False,
     'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
@@ -58,17 +59,21 @@ def main(train_args):
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
-    short_size = int(min(train_args['input_size']) / 0.875)
     train_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(short_size),
-        simul_transforms.RandomCrop(train_args['input_size']),
+        simul_transforms.RandomRotate(10),
+        simul_transforms.RandomSized(train_args['input_size']),
         simul_transforms.RandomHorizontallyFlip()
     ])
     val_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(short_size),
+        simul_transforms.Scale(train_args['input_size']),
         simul_transforms.CenterCrop(train_args['input_size'])
     ])
-    input_transform = standard_transforms.Compose([
+    train_input_transform = standard_transforms.Compose([
+        extended_transforms.RandomGaussianBlur(),
+        standard_transforms.ToTensor(),
+        standard_transforms.Normalize(*mean_std)
+    ])
+    val_input_transform = standard_transforms.Compose([
         standard_transforms.ToTensor(),
         standard_transforms.Normalize(*mean_std)
     ])
@@ -77,15 +82,13 @@ def main(train_args):
         extended_transforms.DeNormalize(*mean_std),
         standard_transforms.ToPILImage(),
     ])
-    visualize = standard_transforms.Compose([
-        standard_transforms.Scale(400),
-        standard_transforms.CenterCrop(400),
-        standard_transforms.ToTensor()
-    ])
+    visualize = standard_transforms.ToTensor()
 
-    train_set = voc.VOC('train', simul_transform=train_simul_transform, transform=input_transform, target_transform=target_transform)
+    train_set = voc.VOC('train', simul_transform=train_simul_transform, transform=train_input_transform,
+                        target_transform=target_transform)
     train_loader = DataLoader(train_set, batch_size=train_args['train_batch_size'], num_workers=8, shuffle=True)
-    val_set = voc.VOC('val', simul_transform=val_simul_transform, transform=input_transform, target_transform=target_transform)
+    val_set = voc.VOC('val', simul_transform=val_simul_transform, transform=val_input_transform,
+                      target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=train_args['val_batch_size'], num_workers=8, shuffle=False)
 
     criterion = CrossEntropyLoss2d(size_average=True, ignore_index=voc.ignore_label).cuda()
@@ -115,10 +118,10 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
         train_aux_loss = AverageMeter()
         curr_iter = (curr_epoch - 1) * len(train_loader)
         for i, data in enumerate(train_loader):
-            optimizer.param_groups[0]['lr'] = 2 * train_args['lr'] * (1 - curr_iter / train_args['max_iter']) ** \
-                                                                     train_args['lr_decay']
-            optimizer.param_groups[1]['lr'] = train_args['lr'] * (1 - curr_iter / train_args['max_iter']) ** train_args[
-                'lr_decay']
+            optimizer.param_groups[0]['lr'] = 2 * train_args['lr'] * (1 - curr_iter / train_args['max_iter']
+                                                                      ) ** train_args['lr_decay']
+            optimizer.param_groups[1]['lr'] = train_args['lr'] * (1 - curr_iter / train_args['max_iter']
+                                                                  ) ** train_args['lr_decay']
 
             inputs, labels = data
             assert inputs.size()[2:] == labels.size()[1:]
@@ -146,10 +149,13 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
 
             if (i + 1) % train_args['print_freq'] == 0:
                 print '[epoch %d], [iter %d / %d], [train main loss %.5f], [train aux loss %.5f]. [lr %.10f]' % (
-                    curr_epoch, i + 1, len(train_loader), train_main_loss.avg, train_aux_loss.avg, optimizer.param_groups[1]['lr']
+                    curr_epoch, i + 1, len(train_loader), train_main_loss.avg, train_aux_loss.avg,
+                    optimizer.param_groups[1]['lr']
                 )
             if curr_iter >= train_args['max_iter']:
                 return
+            if i > 20:
+                break
         validate(val_loader, net, criterion, optimizer, curr_epoch, train_args, restore, visualize)
         curr_epoch += 1
 

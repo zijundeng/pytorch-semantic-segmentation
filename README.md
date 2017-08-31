@@ -20,10 +20,6 @@ implemented in PyTorch
 1. Go to *models* directory and set the path of pretrained models in *config.py*
 2. Go to *datasets* directory and do following the README
 
-## Reference
-I have borrowed some code from these nice repositories: [[1]](https://github.com/bodokaiser/piwise),
-[[2]](https://github.com/ycszen/pytorch-ss). Thank them for the sharing
-
 ## TODO
 1. DeepLab v3
 2. RefineNet

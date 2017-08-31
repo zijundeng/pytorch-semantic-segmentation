@@ -9,5 +9,5 @@ validate the loss and mean_iu after training of one epoch
 
 ![](static/fcn8s-mean_iu.jpg)
 
-## Visulization
+## Visualization
 ![](static/fcn8s-epoch9.jpg)

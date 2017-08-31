@@ -10,6 +10,7 @@ class Compose(object):
         self.transforms = transforms
 
     def __call__(self, img, mask):
+        assert img.size == mask.size
         for t in self.transforms:
             img, mask = t(img, mask)
         return img, mask
@@ -49,6 +50,7 @@ class CenterCrop(object):
             self.size = size
 
     def __call__(self, img, mask):
+        assert img.size == mask.size
         w, h = img.size
         th, tw = self.size
         x1 = int(round((w - tw) / 2.))
@@ -68,6 +70,7 @@ class FreeScale(object):
         self.size = tuple(reversed(size))  # size: (h, w)
 
     def __call__(self, img, mask):
+        assert img.size == mask.size
         return img.resize(self.size, Image.BILINEAR), mask.resize(self.size, Image.NEAREST)
 
 
@@ -92,14 +95,14 @@ class Scale(object):
 
 class RandomSizedCrop(object):
     def __init__(self, size):
-        self.size = tuple(reversed(size))
+        self.size = size
 
     def __call__(self, img, mask):
         assert img.size == mask.size
         for attempt in range(10):
             area = img.size[0] * img.size[1]
-            target_area = random.uniform(0.08, 1.0) * area
-            aspect_ratio = random.uniform(3. / 4, 4. / 3)
+            target_area = random.uniform(0.45, 1.0) * area
+            aspect_ratio = random.uniform(0.5, 2)
 
             w = int(round(math.sqrt(target_area * aspect_ratio)))
             h = int(round(math.sqrt(target_area / aspect_ratio)))
@@ -122,3 +125,37 @@ class RandomSizedCrop(object):
         scale = Scale(self.size)
         crop = CenterCrop(self.size)
         return crop(*scale(img, mask))
+
+
+class RandomRotate(object):
+    def __init__(self, degree):
+        self.degree = degree
+
+    def __call__(self, img, mask):
+        rotate_degree = random.random() * 2 * self.degree - self.degree
+        return img.rotate(rotate_degree, Image.BILINEAR), mask.rotate(rotate_degree, Image.NEAREST)
+
+
+class RandomSized(object):
+    def __init__(self, size):
+        self.size = size
+        self.scale = Scale(self.size)
+        self.crop = RandomCrop(self.size)
+
+    def __call__(self, img, mask):
+        assert img.size == mask.size
+        ori_crop = RandomCrop(min(img.size))
+        img, mask = ori_crop(img, mask)
+
+        area = img.size[0] * img.size[1]
+        aspect_ratio = random.uniform(0.5, 2)
+
+        w = int(round(math.sqrt(area * aspect_ratio)))
+        h = int(round(math.sqrt(area / aspect_ratio)))
+
+        if random.random() < 0.5:
+            w, h = h, w
+
+        img, mask = img.resize((w, h), Image.BILINEAR), mask.resize((w, h), Image.NEAREST)
+
+        return self.crop(*self.scale(img, mask))
