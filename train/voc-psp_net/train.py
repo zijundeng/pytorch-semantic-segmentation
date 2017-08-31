@@ -146,6 +146,7 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
             curr_iter += 1
             writer.add_scalar('train_main_loss', train_main_loss.avg, curr_iter)
             writer.add_scalar('train_aux_loss', train_aux_loss.avg, curr_iter)
+            writer.add_scalar('lr', optimizer.param_groups[1]['lr'], curr_iter)
 
             if (i + 1) % train_args['print_freq'] == 0:
                 print '[epoch %d], [iter %d / %d], [train main loss %.5f], [train aux loss %.5f]. [lr %.10f]' % (
@@ -154,8 +155,6 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
                 )
             if curr_iter >= train_args['max_iter']:
                 return
-            if i > 20:
-                break
         validate(val_loader, net, criterion, optimizer, curr_epoch, train_args, restore, visualize)
         curr_epoch += 1
 
@@ -239,7 +238,6 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
     writer.add_scalar('acc_cls', acc_cls, epoch)
     writer.add_scalar('mean_iu', mean_iu, epoch)
     writer.add_scalar('fwavacc', fwavacc, epoch)
-    writer.add_scalar('lr', optimizer.param_groups[1]['lr'], epoch)
 
     net.train()
     return val_loss.avg

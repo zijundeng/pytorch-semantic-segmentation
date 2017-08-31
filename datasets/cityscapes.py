@@ -25,16 +25,18 @@ def colorize_mask(mask):
 
 
 def make_dataset(quality, mode):
-    assert quality in ['fine', 'coarse']
-    assert mode in ['train', 'val']
+    assert (quality == 'fine' and mode in ['train', 'val']) or \
+           (quality == 'coarse' and mode in ['train', 'train_extra', 'val'])
 
-    img_path = os.path.join(root, 'leftImg8bit_trainvaltest', 'leftImg8bit', mode)
     if quality == 'coarse':
+        img_dir_name = 'leftImg8bit_trainextra' if mode == 'train_extra' else 'leftImg8bit_trainvaltest'
         mask_path = os.path.join(root, 'gtCoarse', 'gtCoarse', mode)
         mask_postfix = '_gtCoarse_labelIds.png'
     else:
+        img_dir_name = 'leftImg8bit_trainvaltest'
         mask_path = os.path.join(root, 'gtFine_trainvaltest', 'gtFine', mode)
         mask_postfix = '_gtFine_labelIds.png'
+    img_path = os.path.join(root, img_dir_name, 'leftImg8bit', mode)
     assert os.listdir(img_path) == os.listdir(mask_path)
     items = []
     categories = os.listdir(img_path)

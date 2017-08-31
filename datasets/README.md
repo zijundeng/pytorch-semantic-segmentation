@@ -11,6 +11,6 @@ into *VOCdevkit/VOC2012/ImageSets/Segmentation*
 5. Set the path (*root*) of *VOC* folder in the last step in *voc.py*
 
 ## Cityscapes
-1. Download *leftImg8bit_trainvaltest*, *gtFine_trainvaltest*, and *gtCoarse* from the cityscapes website
+1. Download *leftImg8bit_trainvaltest*, *gtFine_trainvaltest*, *leftImg8bit_trainextra*, and *gtCoarse* from the cityscapes website
 2. Extract and put them in a folder called *cityscapes*
 3. Set the path (*root*) of *cityscapes* folder in the last step in *cityscapes.py*
