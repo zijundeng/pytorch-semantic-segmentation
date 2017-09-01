@@ -3,6 +3,7 @@ import math
 import os
 import random
 
+import numpy as np
 import torchvision.transforms as standard_transforms
 import torchvision.utils as vutils
 from tensorboard import SummaryWriter
@@ -13,33 +14,34 @@ from torch.utils.data import DataLoader
 
 import utils.simul_transforms as simul_transforms
 import utils.transforms as extended_transforms
-from datasets import voc
+from datasets import cityscapes
 from models import *
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
 cudnn.benchmark = True
 
 ckpt_path = '../../ckpt'
-exp_name = 'voc-psp_net'
+exp_name = 'cityscapes (coarse-extra)-psp_net'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
     'train_batch_size': 8,
     'lr': 1e-2 / (math.sqrt(16. / 8)),
     'lr_decay': 0.9,
-    'max_iter': 3e4,
+    'max_iter': 10e4,
     'input_size': 340,
     'weight_decay': 1e-4,
     'momentum': 0.9,
     'snapshot': '',  # empty string denotes learning from scratch
     'print_freq': 20,
+    'val_batch_size': 8,
     'val_save_to_img_file': False,
     'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
 
 
 def main(train_args):
-    net = PSPNet(num_classes=voc.num_classes).cuda()
+    net = PSPNet(num_classes=cityscapes.num_classes).cuda()
 
     if len(train_args['snapshot']) == 0:
         curr_epoch = 1
@@ -64,7 +66,6 @@ def main(train_args):
     ])
     val_simul_transform = simul_transforms.Scale(train_args['input_size'])
     train_input_transform = standard_transforms.Compose([
-        extended_transforms.RandomGaussianBlur(),
         standard_transforms.ToTensor(),
         standard_transforms.Normalize(*mean_std)
     ])
@@ -77,20 +78,16 @@ def main(train_args):
         extended_transforms.DeNormalize(*mean_std),
         standard_transforms.ToPILImage(),
     ])
-    visualize = standard_transforms.Compose([
-        standard_transforms.Scale(400),
-        standard_transforms.CenterCrop(400),
-        standard_transforms.ToTensor()
-    ])
+    visualize = standard_transforms.ToTensor()
 
-    train_set = voc.VOC('train', simul_transform=train_simul_transform, transform=train_input_transform,
+    train_set = cityscapes.CityScapes('coarse', 'train_extra', simul_transform=train_simul_transform, transform=train_input_transform,
                         target_transform=target_transform)
     train_loader = DataLoader(train_set, batch_size=train_args['train_batch_size'], num_workers=8, shuffle=True)
-    val_set = voc.VOC('val', simul_transform=val_simul_transform, transform=val_input_transform,
+    val_set = cityscapes.CityScapes('coarse', 'val', simul_transform=val_simul_transform, transform=val_input_transform,
                       target_transform=target_transform)
-    val_loader = DataLoader(val_set, batch_size=1, num_workers=8, shuffle=False)
+    val_loader = DataLoader(val_set, batch_size=train_args['val_batch_size'], num_workers=8, shuffle=False)
 
-    criterion = CrossEntropyLoss2d(size_average=True, ignore_index=voc.ignore_label).cuda()
+    criterion = CrossEntropyLoss2d(size_average=True, ignore_index=cityscapes.ignore_label).cuda()
 
     optimizer = optim.SGD([
         {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias'],
@@ -123,11 +120,6 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
                                                                   ) ** train_args['lr_decay']
 
             inputs, labels = data
-            # for idx, input in enumerate(zip(inputs, labels)):
-            #     input_pil = restore(input[0])
-            #     input_pil.save('%d_input.png' % idx)
-            #     label_pil = voc.colorize_mask(input[1].numpy())
-            #     label_pil.save('%d_label.png' % idx)
             assert inputs.size()[2:] == labels.size()[1:]
             N = inputs.size(0) * inputs.size(2) * inputs.size(3)
             inputs = Variable(inputs).cuda()
@@ -136,7 +128,7 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
             optimizer.zero_grad()
             outputs, aux = net(inputs)
             assert outputs.size()[2:] == labels.size()[1:]
-            assert outputs.size()[1] == voc.num_classes
+            assert outputs.size()[1] == cityscapes.num_classes
 
             main_loss = criterion(outputs, labels)
             aux_loss = criterion(aux, labels)
@@ -176,18 +168,22 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         gts = Variable(gts, volatile=True).cuda()
 
         outputs = net(inputs)
-        predictions = outputs.data.max(1)[1].squeeze_(1).squeeze_(0).cpu().numpy()
+        predictions = outputs.data.max(1)[1].squeeze_(1).cpu().numpy()
 
         val_loss.update(criterion(outputs, gts).data[0], N)
 
-        if random.random() > train_args['val_img_sample_rate']:
-            inputs_all.append(None)
-        else:
-            inputs_all.append(inputs.data.squeeze_(0).cpu())
-        gts_all.append(gts.data.squeeze_(0).cpu().numpy())
+        for i in inputs:
+            if random.random() > train_args['val_img_sample_rate']:
+                inputs_all.append(None)
+            else:
+                inputs_all.append(i.data.cpu())
+        gts_all.append(gts.data.cpu().numpy())
         predictions_all.append(predictions)
 
-    acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, voc.num_classes)
+    gts_all = np.concatenate(gts_all)
+    predictions_all = np.concatenate(predictions_all)
+
+    acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, cityscapes.num_classes)
 
     if mean_iu > train_args['best_record']['mean_iu']:
         train_args['best_record']['val_loss'] = val_loss.avg
@@ -211,8 +207,8 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
             if data[0] is None:
                 continue
             input_pil = restore(data[0])
-            gt_pil = voc.colorize_mask(data[1])
-            predictions_pil = voc.colorize_mask(data[2])
+            gt_pil = cityscapes.colorize_mask(data[1])
+            predictions_pil = cityscapes.colorize_mask(data[2])
             if train_args['val_save_to_img_file']:
                 input_pil.save(os.path.join(to_save_dir, '%d_input.png' % idx))
                 predictions_pil.save(os.path.join(to_save_dir, '%d_prediction.png' % idx))

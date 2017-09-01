@@ -88,9 +88,9 @@ class PSPNetDeform(nn.Module):
         super(PSPNetDeform, self).__init__()
         self.input_size = input_size
         self.use_aux = use_aux
-        resnet = models.resnet152()
+        resnet = models.resnet101()
         if pretrained:
-            resnet.load_state_dict(torch.load(res152_path))
+            resnet.load_state_dict(torch.load(res101_path))
         self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
         self.layer1 = resnet.layer1
         self.layer2 = resnet.layer2

@@ -1,5 +1,4 @@
 import datetime
-import math
 import os
 import random
 
@@ -21,15 +20,15 @@ from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 cudnn.benchmark = True
 
 ckpt_path = '../../ckpt'
-exp_name = 'cityscapes-psp_net'
+exp_name = 'cityscapes (coarse)-psp_net'
 writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
     'train_batch_size': 8,
-    'lr': 1e-2 / (math.sqrt(16. / 8)),
+    'lr': 1e-4,
     'lr_decay': 0.9,
-    'max_iter': 9e4,
-    'input_size': 350,
+    'max_iter': 1e4,
+    'input_size': 340,
     'weight_decay': 1e-4,
     'momentum': 0.9,
     'snapshot': '',  # empty string denotes learning from scratch
@@ -44,6 +43,7 @@ def main(train_args):
     net = PSPNet(num_classes=cityscapes.num_classes).cuda()
 
     if len(train_args['snapshot']) == 0:
+        net.load_state_dict(torch.load(os.path.join(ckpt_path, 'cityscapes (coarse-extra)-psp_net', 'xx.pth')))
         curr_epoch = 1
         train_args['best_record'] = {'epoch': 0, 'val_loss': 1e10, 'acc': 0, 'acc_cls': 0, 'mean_iu': 0, 'fwavacc': 0}
     else:
@@ -60,15 +60,12 @@ def main(train_args):
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
     train_simul_transform = simul_transforms.Compose([
-        simul_transforms.RandomRotate(10),
         simul_transforms.RandomSized(train_args['input_size']),
+        simul_transforms.RandomRotate(10),
         simul_transforms.RandomHorizontallyFlip()
     ])
-    val_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(train_args['input_size'])
-    ])
+    val_simul_transform = simul_transforms.Scale(train_args['input_size'])
     train_input_transform = standard_transforms.Compose([
-        extended_transforms.RandomGaussianBlur(),
         standard_transforms.ToTensor(),
         standard_transforms.Normalize(*mean_std)
     ])
@@ -83,11 +80,12 @@ def main(train_args):
     ])
     visualize = standard_transforms.ToTensor()
 
-    train_set = cityscapes.CityScapes('fine', 'train', simul_transform=train_simul_transform, transform=train_input_transform,
-                        target_transform=target_transform)
+    train_set = cityscapes.CityScapes('coarse', 'train', simul_transform=train_simul_transform,
+                                      transform=train_input_transform,
+                                      target_transform=target_transform)
     train_loader = DataLoader(train_set, batch_size=train_args['train_batch_size'], num_workers=8, shuffle=True)
-    val_set = cityscapes.CityScapes('fine', 'val', simul_transform=val_simul_transform, transform=val_input_transform,
-                      target_transform=target_transform)
+    val_set = cityscapes.CityScapes('coarse', 'val', simul_transform=val_simul_transform, transform=val_input_transform,
+                                    target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=train_args['val_batch_size'], num_workers=8, shuffle=False)
 
     criterion = CrossEntropyLoss2d(size_average=True, ignore_index=cityscapes.ignore_label).cuda()
@@ -117,9 +115,9 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
         train_aux_loss = AverageMeter()
         curr_iter = (curr_epoch - 1) * len(train_loader)
         for i, data in enumerate(train_loader):
-            optimizer.param_groups[0]['lr'] = 2 * train_args['lr'] * (1 - curr_iter / train_args['max_iter']
+            optimizer.param_groups[0]['lr'] = 2 * train_args['lr'] * (1 - float(curr_iter) / train_args['max_iter']
                                                                       ) ** train_args['lr_decay']
-            optimizer.param_groups[1]['lr'] = train_args['lr'] * (1 - curr_iter / train_args['max_iter']
+            optimizer.param_groups[1]['lr'] = train_args['lr'] * (1 - float(curr_iter) / train_args['max_iter']
                                                                   ) ** train_args['lr_decay']
 
             inputs, labels = data

@@ -45,6 +45,16 @@ class CrossEntropyLoss2d(nn.Module):
         return self.nll_loss(F.log_softmax(inputs), targets)
 
 
+class FocalLoss2d(nn.Module):
+    def __init__(self, gamma=2, weight=None, size_average=True, ignore_index=255):
+        super(FocalLoss2d, self).__init__()
+        self.gamma = gamma
+        self.nll_loss = nn.NLLLoss2d(weight, size_average, ignore_index)
+
+    def forward(self, inputs, targets):
+        return self.nll_loss((1 - F.softmax(inputs)) ** self.gamma * F.log_softmax(inputs), targets)
+
+
 def _fast_hist(label_pred, label_true, num_classes):
     mask = (label_true >= 0) & (label_true < num_classes)
     hist = np.bincount(

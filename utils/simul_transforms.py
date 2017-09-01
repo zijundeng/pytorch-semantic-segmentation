@@ -144,17 +144,9 @@ class RandomSized(object):
 
     def __call__(self, img, mask):
         assert img.size == mask.size
-        ori_crop = RandomCrop(min(img.size))
-        img, mask = ori_crop(img, mask)
 
-        area = img.size[0] * img.size[1]
-        aspect_ratio = random.uniform(0.5, 2)
-
-        w = int(round(math.sqrt(area * aspect_ratio)))
-        h = int(round(math.sqrt(area / aspect_ratio)))
-
-        if random.random() < 0.5:
-            w, h = h, w
+        w = int(random.uniform(0.5, 2) * img.size[0])
+        h = int(random.uniform(0.5, 2) * img.size[1])
 
         img, mask = img.resize((w, h), Image.BILINEAR), mask.resize((w, h), Image.NEAREST)
 
