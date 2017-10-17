@@ -3,8 +3,8 @@ import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
-from layer import Conv2dDeformable
 from utils import initialize_weights
+from utils.misc import Conv2dDeformable
 from .config import res101_path
 
 

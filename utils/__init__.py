@@ -1,3 +1,3 @@
 from .misc import *
-from .simul_transforms import *
+from .joint_transforms import *
 from .transforms import *

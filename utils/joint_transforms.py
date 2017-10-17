@@ -3,6 +3,7 @@ import numbers
 import random
 
 from PIL import Image, ImageOps
+import numpy as np
 
 
 class Compose(object):
@@ -151,3 +152,94 @@ class RandomSized(object):
         img, mask = img.resize((w, h), Image.BILINEAR), mask.resize((w, h), Image.NEAREST)
 
         return self.crop(*self.scale(img, mask))
+
+
+class SlidingCrop(object):
+    def __init__(self, crop_size, stride_rate, ignore_label):
+        self.crop_size = crop_size
+        self.stride_rate = stride_rate
+        self.ignore_label = ignore_label
+
+    def _pad(self, img, mask):
+        h, w = img.shape[: 2]
+        pad_h = max(self.crop_size - h, 0)
+        pad_w = max(self.crop_size - w, 0)
+        img = np.pad(img, ((0, pad_h), (0, pad_w), (0, 0)), 'constant')
+        mask = np.pad(mask, ((0, pad_h), (0, pad_w)), 'constant', constant_values=self.ignore_label)
+        return img, mask
+
+    def __call__(self, img, mask):
+        assert img.size == mask.size
+
+        w, h = img.size
+        long_size = max(h, w)
+
+        img = np.array(img)
+        mask = np.array(mask)
+
+        if long_size > self.crop_size:
+            stride = int(math.ceil(self.crop_size * self.stride_rate))
+            h_step_num = int(math.ceil((h - self.crop_size) / float(stride))) + 1
+            w_step_num = int(math.ceil((w - self.crop_size) / float(stride))) + 1
+            img_sublist, mask_sublist = [], []
+            for yy in xrange(h_step_num):
+                for xx in xrange(w_step_num):
+                    sy, sx = yy * stride, xx * stride
+                    ey, ex = sy + self.crop_size, sx + self.crop_size
+                    img_sub = img[sy: ey, sx: ex, :]
+                    mask_sub = mask[sy: ey, sx: ex]
+                    img_sub, mask_sub = self._pad(img_sub, mask_sub)
+                    img_sublist.append(Image.fromarray(img_sub.astype(np.uint8)).convert('RGB'))
+                    mask_sublist.append(Image.fromarray(mask_sub.astype(np.uint8)).convert('P'))
+            return img_sublist, mask_sublist
+        else:
+            img, mask = self._pad(img, mask)
+            img = Image.fromarray(img.astype(np.uint8)).convert('RGB')
+            mask = Image.fromarray(mask.astype(np.uint8)).convert('P')
+            return img, mask
+
+
+class SlidingCropTest(object):
+    def __init__(self, crop_size, stride_rate, ignore_label):
+        self.crop_size = crop_size
+        self.stride_rate = stride_rate
+        self.ignore_label = ignore_label
+
+    def _pad(self, img, mask):
+        h, w = img.shape[: 2]
+        pad_h = max(self.crop_size - h, 0)
+        pad_w = max(self.crop_size - w, 0)
+        img = np.pad(img, ((0, pad_h), (0, pad_w), (0, 0)), 'constant')
+        mask = np.pad(mask, ((0, pad_h), (0, pad_w)), 'constant', constant_values=self.ignore_label)
+        return img, mask, pad_h, pad_w
+
+    def __call__(self, img, mask):
+        assert img.size == mask.size
+
+        w, h = img.size
+        long_size = max(h, w)
+
+        img = np.array(img)
+        mask = np.array(mask)
+
+        if long_size > self.crop_size:
+            stride = int(math.ceil(self.crop_size * self.stride_rate))
+            h_step_num = int(math.ceil((h - self.crop_size) / float(stride))) + 1
+            w_step_num = int(math.ceil((w - self.crop_size) / float(stride))) + 1
+            img_sublist, mask_sublist, slice_info_sublist = [], [], []
+            for yy in xrange(h_step_num):
+                for xx in xrange(w_step_num):
+                    sy, sx = yy * stride, xx * stride
+                    ey, ex = sy + self.crop_size, sx + self.crop_size
+                    img_sub = img[sy: ey, sx: ex, :]
+                    mask_sub = mask[sy: ey, sx: ex]
+                    img_sub, mask_sub, pad_h, pad_w = self._pad(img_sub, mask_sub)
+                    img_sublist.append(Image.fromarray(img_sub.astype(np.uint8)).convert('RGB'))
+                    mask_sublist.append(Image.fromarray(mask_sub.astype(np.uint8)).convert('P'))
+                    slice_info_sublist.append([sy, ey, sx, ex, pad_h, pad_w])
+            return img_sublist, mask_sublist, slice_info_sublist
+        else:
+            img, mask, pad_h, pad_w = self._pad(img, mask)
+            img = Image.fromarray(img.astype(np.uint8)).convert('RGB')
+            mask = Image.fromarray(mask.astype(np.uint8)).convert('P')
+            return img, mask, []

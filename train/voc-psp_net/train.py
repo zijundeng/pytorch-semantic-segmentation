@@ -11,7 +11,7 @@ from torch.autograd import Variable
 from torch.backends import cudnn
 from torch.utils.data import DataLoader
 
-import utils.simul_transforms as simul_transforms
+import utils.joint_transforms as simul_transforms
 import utils.transforms as extended_transforms
 from datasets import voc
 from models import *
@@ -83,10 +83,10 @@ def main(train_args):
         standard_transforms.ToTensor()
     ])
 
-    train_set = voc.VOC('train', simul_transform=train_simul_transform, transform=train_input_transform,
+    train_set = voc.VOC('train', joint_transform=train_simul_transform, transform=train_input_transform,
                         target_transform=target_transform)
     train_loader = DataLoader(train_set, batch_size=train_args['train_batch_size'], num_workers=8, shuffle=True)
-    val_set = voc.VOC('val', simul_transform=val_simul_transform, transform=val_input_transform,
+    val_set = voc.VOC('val', joint_transform=val_simul_transform, transform=val_input_transform,
                       target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=1, num_workers=8, shuffle=False)
 

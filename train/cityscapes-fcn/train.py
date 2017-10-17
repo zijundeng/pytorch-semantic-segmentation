@@ -12,7 +12,7 @@ from torch.backends import cudnn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
-import utils.simul_transforms as simul_transforms
+import utils.joint_transforms as joint_transforms
 import utils.transforms as extended_transforms
 from datasets import cityscapes
 from models import *
@@ -27,7 +27,7 @@ writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 args = {
     'train_batch_size': 16,
     'epoch_num': 500,
-    'lr': 4e-10,
+    'lr': 1e-10,
     'weight_decay': 5e-4,
     'input_size': (256, 512),
     'momentum': 0.95,
@@ -40,33 +40,32 @@ args = {
 }
 
 
-def main(train_args):
+def main():
     net = FCN8s(num_classes=cityscapes.num_classes).cuda()
 
-    if len(train_args['snapshot']) == 0:
+    if len(args['snapshot']) == 0:
         curr_epoch = 1
-        train_args['best_record'] = {'epoch': 0, 'val_loss': 1e10, 'acc': 0, 'acc_cls': 0, 'mean_iu': 0, 'fwavacc': 0}
+        args['best_record'] = {'epoch': 0, 'val_loss': 1e10, 'acc': 0, 'acc_cls': 0, 'mean_iu': 0, 'fwavacc': 0}
     else:
-        print 'training resumes from ' + train_args['snapshot']
-        net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, train_args['snapshot'])))
-        split_snapshot = train_args['snapshot'].split('_')
+        print 'training resumes from ' + args['snapshot']
+        net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, args['snapshot'])))
+        split_snapshot = args['snapshot'].split('_')
         curr_epoch = int(split_snapshot[1]) + 1
-        train_args['best_record'] = {'epoch': int(split_snapshot[1]), 'val_loss': float(split_snapshot[3]),
-                                     'acc': float(split_snapshot[5]), 'acc_cls': float(split_snapshot[7]),
-                                     'mean_iu': float(split_snapshot[9]), 'fwavacc': float(split_snapshot[11])}
-
+        args['best_record'] = {'epoch': int(split_snapshot[1]), 'val_loss': float(split_snapshot[3]),
+                               'acc': float(split_snapshot[5]), 'acc_cls': float(split_snapshot[7]),
+                               'mean_iu': float(split_snapshot[9]), 'fwavacc': float(split_snapshot[11])}
     net.train()
 
     mean_std = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    short_size = int(min(train_args['input_size']) / 0.875)
-    train_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(short_size),
-        simul_transforms.RandomCrop(train_args['input_size']),
-        simul_transforms.RandomHorizontallyFlip()
+    short_size = int(min(args['input_size']) / 0.875)
+    train_joint_transform = joint_transforms.Compose([
+        joint_transforms.Scale(short_size),
+        joint_transforms.RandomCrop(args['input_size']),
+        joint_transforms.RandomHorizontallyFlip()
     ])
-    val_simul_transform = simul_transforms.Compose([
-        simul_transforms.Scale(short_size),
-        simul_transforms.CenterCrop(train_args['input_size'])
+    val_joint_transform = joint_transforms.Compose([
+        joint_transforms.Scale(short_size),
+        joint_transforms.CenterCrop(args['input_size'])
     ])
     input_transform = standard_transforms.Compose([
         standard_transforms.ToTensor(),
@@ -79,35 +78,35 @@ def main(train_args):
     ])
     visualize = standard_transforms.ToTensor()
 
-    train_set = cityscapes.CityScapes('fine', 'train', simul_transform=train_simul_transform,
+    train_set = cityscapes.CityScapes('fine', 'train', joint_transform=train_joint_transform,
                                       transform=input_transform, target_transform=target_transform)
-    train_loader = DataLoader(train_set, batch_size=train_args['train_batch_size'], num_workers=8, shuffle=True)
-    val_set = cityscapes.CityScapes('fine', 'val', simul_transform=val_simul_transform, transform=input_transform,
+    train_loader = DataLoader(train_set, batch_size=args['train_batch_size'], num_workers=8, shuffle=True)
+    val_set = cityscapes.CityScapes('fine', 'val', joint_transform=val_joint_transform, transform=input_transform,
                                     target_transform=target_transform)
-    val_loader = DataLoader(val_set, batch_size=train_args['val_batch_size'], num_workers=8, shuffle=False)
+    val_loader = DataLoader(val_set, batch_size=args['val_batch_size'], num_workers=8, shuffle=False)
 
     criterion = CrossEntropyLoss2d(size_average=False, ignore_index=cityscapes.ignore_label).cuda()
 
     optimizer = optim.SGD([
         {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias'],
-         'lr': 2 * train_args['lr']},
+         'lr': 2 * args['lr']},
         {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
-         'lr': train_args['lr'], 'weight_decay': train_args['weight_decay']}
-    ], momentum=train_args['momentum'])
+         'lr': args['lr'], 'weight_decay': args['weight_decay']}
+    ], momentum=args['momentum'])
 
-    if len(train_args['snapshot']) > 0:
-        optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + train_args['snapshot'])))
-        optimizer.param_groups[0]['lr'] = 2 * train_args['lr']
-        optimizer.param_groups[1]['lr'] = train_args['lr']
+    if len(args['snapshot']) > 0:
+        optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + args['snapshot'])))
+        optimizer.param_groups[0]['lr'] = 2 * args['lr']
+        optimizer.param_groups[1]['lr'] = args['lr']
 
     check_mkdir(ckpt_path)
     check_mkdir(os.path.join(ckpt_path, exp_name))
-    open(os.path.join(ckpt_path, exp_name, str(datetime.datetime.now()) + '.txt'), 'w').write(str(train_args) + '\n\n')
+    open(os.path.join(ckpt_path, exp_name, str(datetime.datetime.now()) + '.txt'), 'w').write(str(args) + '\n\n')
 
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=train_args['lr_patience'], min_lr=1e-10, verbose=True)
-    for epoch in range(curr_epoch, train_args['epoch_num'] + 1):
-        train(train_loader, net, criterion, optimizer, epoch, train_args)
-        val_loss = validate(val_loader, net, criterion, optimizer, epoch, train_args, restore_transform, visualize)
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=args['lr_patience'], min_lr=1e-10)
+    for epoch in range(curr_epoch, args['epoch_num'] + 1):
+        train(train_loader, net, criterion, optimizer, epoch, args)
+        val_loss = validate(val_loader, net, criterion, optimizer, epoch, args, restore_transform, visualize)
         scheduler.step(val_loss)
 
 
@@ -137,8 +136,7 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args):
 
         if (i + 1) % train_args['print_freq'] == 0:
             print '[epoch %d], [iter %d / %d], [train loss %.5f]' % (
-                epoch, i + 1, len(train_loader), train_loss.avg
-            )
+                epoch, i + 1, len(train_loader), train_loss.avg)
 
 
 def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, visualize):
@@ -205,7 +203,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         val_visual = vutils.make_grid(val_visual, nrow=3, padding=5)
         writer.add_image(snapshot_name, val_visual)
 
-    print '--------------------------------------------------------------------'
+    print '-----------------------------------------------------------------------------------------------------------'
     print '[epoch %d], [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f]' % (
         epoch, val_loss.avg, acc, acc_cls, mean_iu, fwavacc)
 
@@ -213,7 +211,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         train_args['best_record']['val_loss'], train_args['best_record']['acc'], train_args['best_record']['acc_cls'],
         train_args['best_record']['mean_iu'], train_args['best_record']['fwavacc'], train_args['best_record']['epoch'])
 
-    print '--------------------------------------------------------------------'
+    print '-----------------------------------------------------------------------------------------------------------'
 
     writer.add_scalar('val_loss', val_loss.avg, epoch)
     writer.add_scalar('acc', acc, epoch)
@@ -227,4 +225,4 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
 
 
 if __name__ == '__main__':
-    main(args)
+    main()

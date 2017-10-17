@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import scipy.io as sio
+import torch
 from PIL import Image
 from torch.utils import data
 
@@ -32,7 +33,7 @@ def colorize_mask(mask):
 
 
 def make_dataset(mode):
-    assert mode in ['train', 'val']
+    assert mode in ['train', 'val', 'test']
     items = []
     if mode == 'train':
         img_path = os.path.join(root, 'benchmark_RELEASE', 'dataset', 'img')
@@ -42,7 +43,7 @@ def make_dataset(mode):
         for it in data_list:
             item = (os.path.join(img_path, it + '.jpg'), os.path.join(mask_path, it + '.mat'))
             items.append(item)
-    else:
+    elif mode == 'val':
         img_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'JPEGImages')
         mask_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'SegmentationClass')
         data_list = [l.strip('\n') for l in open(os.path.join(
@@ -50,20 +51,33 @@ def make_dataset(mode):
         for it in data_list:
             item = (os.path.join(img_path, it + '.jpg'), os.path.join(mask_path, it + '.png'))
             items.append(item)
+    else:
+        img_path = os.path.join(root, 'VOCdevkit (test)', 'VOC2012', 'JPEGImages')
+        data_list = [l.strip('\n') for l in open(os.path.join(
+            root, 'VOCdevkit (test)', 'VOC2012', 'ImageSets', 'Segmentation', 'test.txt')).readlines()]
+        for it in data_list:
+            items.append((img_path, it))
     return items
 
 
 class VOC(data.Dataset):
-    def __init__(self, mode, simul_transform=None, transform=None, target_transform=None):
+    def __init__(self, mode, joint_transform=None, transform=None, target_transform=None):
         self.imgs = make_dataset(mode)
         if len(self.imgs) == 0:
             raise (RuntimeError('Found 0 images, please check the data set'))
         self.mode = mode
-        self.simul_transform = simul_transform
+        self.joint_transform = joint_transform
         self.transform = transform
         self.target_transform = target_transform
 
     def __getitem__(self, index):
+        if self.mode == 'test':
+            img_path, img_name = self.imgs[index]
+            img = Image.open(os.path.join(img_path, img_name + '.jpg')).convert('RGB')
+            if self.transform is not None:
+                img = self.transform(img)
+            return img_name, img
+
         img_path, mask_path = self.imgs[index]
         img = Image.open(img_path).convert('RGB')
         if self.mode == 'train':
@@ -72,12 +86,20 @@ class VOC(data.Dataset):
         else:
             mask = Image.open(mask_path)
 
-        if self.simul_transform is not None:
-            img, mask = self.simul_transform(img, mask)
-        if self.transform is not None:
-            img = self.transform(img)
-        if self.target_transform is not None:
-            mask = self.target_transform(mask)
+        if self.joint_transform is not None:
+            img, mask = self.joint_transform(img, mask)
+
+        if isinstance(img, list) and isinstance(mask, list):
+            if self.transform is not None:
+                img = [self.transform(e) for e in img]
+            if self.target_transform is not None:
+                mask = [self.target_transform(e) for e in mask]
+            img, mask = torch.stack(img, 0), torch.stack(mask, 0)
+        else:
+            if self.transform is not None:
+                img = self.transform(img)
+            if self.target_transform is not None:
+                mask = self.target_transform(mask)
 
         return img, mask
 
