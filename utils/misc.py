@@ -34,7 +34,7 @@ def get_upsampling_weight(in_channels, out_channels, kernel_size):
     og = np.ogrid[:kernel_size, :kernel_size]
     filt = (1 - abs(og[0] - center) / factor) * (1 - abs(og[1] - center) / factor)
     weight = np.zeros((in_channels, out_channels, kernel_size, kernel_size), dtype=np.float64)
-    weight[range(in_channels), range(out_channels), :, :] = filt
+    weight[list(range(in_channels)), list(range(out_channels)), :, :] = filt
     return torch.from_numpy(weight).float()
 
 
@@ -170,7 +170,7 @@ def sliced_forward(single_forward):
                 scaled_x = Variable(scaled_x).cuda()
                 scaled_h, scaled_w = scaled_x.size()[2:]
                 long_size = max(scaled_h, scaled_w)
-                print scaled_x.size()
+                print(scaled_x.size())
 
                 if long_size > self.crop_size:
                     count = torch.zeros((scaled_h, scaled_w))
@@ -179,13 +179,13 @@ def sliced_forward(single_forward):
                     stride = int(ceil(self.crop_size * self.stride_rate))
                     h_step_num = int(ceil((scaled_h - self.crop_size) / stride)) + 1
                     w_step_num = int(ceil((scaled_w - self.crop_size) / stride)) + 1
-                    for yy in xrange(h_step_num):
-                        for xx in xrange(w_step_num):
+                    for yy in range(h_step_num):
+                        for xx in range(w_step_num):
                             sy, sx = yy * stride, xx * stride
                             ey, ex = sy + self.crop_size, sx + self.crop_size
                             x_sub = scaled_x[:, :, sy: ey, sx: ex]
                             x_sub, pad_h, pad_w = _pad(x_sub, self.crop_size)
-                            print x_sub.size()
+                            print(x_sub.size())
                             outputs_sub, aux_sub = single_forward(self, x_sub)
 
                             if sy + self.crop_size > scaled_h:
@@ -225,8 +225,8 @@ def sliced_forward(single_forward):
                     stride = int(ceil(self.crop_size * self.stride_rate))
                     h_step_num = int(ceil((scaled_h - self.crop_size) / stride)) + 1
                     w_step_num = int(ceil((scaled_w - self.crop_size) / stride)) + 1
-                    for yy in xrange(h_step_num):
-                        for xx in xrange(w_step_num):
+                    for yy in range(h_step_num):
+                        for xx in range(w_step_num):
                             sy, sx = yy * stride, xx * stride
                             ey, ex = sy + self.crop_size, sx + self.crop_size
                             x_sub = scaled_x[:, :, sy: ey, sx: ex]

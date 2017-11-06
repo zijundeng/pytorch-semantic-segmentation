@@ -21,7 +21,7 @@ args = {
 
 def main():
     net = PSPNet(num_classes=voc.num_classes).cuda()
-    print 'load model ' + args['snapshot']
+    print('load model ' + args['snapshot'])
     net.load_state_dict(torch.load(os.path.join(ckpt_path, args['exp_name'], args['snapshot'])))
     net.eval()
 
@@ -48,7 +48,7 @@ def main():
         prediction = voc.colorize_mask(prediction)
         prediction.save(os.path.join(ckpt_path, args['exp_name'], 'test', img_name + '.png'))
 
-        print '%d / %d' % (vi + 1, len(test_loader))
+        print('%d / %d' % (vi + 1, len(test_loader)))
 
 
 if __name__ == '__main__':

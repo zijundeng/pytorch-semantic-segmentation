@@ -182,8 +182,8 @@ class SlidingCrop(object):
             h_step_num = int(math.ceil((h - self.crop_size) / float(stride))) + 1
             w_step_num = int(math.ceil((w - self.crop_size) / float(stride))) + 1
             img_sublist, mask_sublist = [], []
-            for yy in xrange(h_step_num):
-                for xx in xrange(w_step_num):
+            for yy in range(h_step_num):
+                for xx in range(w_step_num):
                     sy, sx = yy * stride, xx * stride
                     ey, ex = sy + self.crop_size, sx + self.crop_size
                     img_sub = img[sy: ey, sx: ex, :]
@@ -227,8 +227,8 @@ class SlidingCropTest(object):
             h_step_num = int(math.ceil((h - self.crop_size) / float(stride))) + 1
             w_step_num = int(math.ceil((w - self.crop_size) / float(stride))) + 1
             img_sublist, mask_sublist, slice_info_sublist = [], [], []
-            for yy in xrange(h_step_num):
-                for xx in xrange(w_step_num):
+            for yy in range(h_step_num):
+                for xx in range(w_step_num):
                     sy, sx = yy * stride, xx * stride
                     ey, ex = sy + self.crop_size, sx + self.crop_size
                     img_sub = img[sy: ey, sx: ex, :]

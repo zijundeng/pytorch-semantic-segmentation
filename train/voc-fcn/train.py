@@ -42,7 +42,7 @@ def main(train_args):
         curr_epoch = 1
         train_args['best_record'] = {'epoch': 0, 'val_loss': 1e10, 'acc': 0, 'acc_cls': 0, 'mean_iu': 0, 'fwavacc': 0}
     else:
-        print 'training resumes from ' + train_args['snapshot']
+        print('training resumes from ' + train_args['snapshot'])
         net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, train_args['snapshot'])))
         split_snapshot = train_args['snapshot'].split('_')
         curr_epoch = int(split_snapshot[1]) + 1
@@ -124,9 +124,9 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args):
         writer.add_scalar('train_loss', train_loss.avg, curr_iter)
 
         if (i + 1) % train_args['print_freq'] == 0:
-            print '[epoch %d], [iter %d / %d], [train loss %.5f]' % (
+            print('[epoch %d], [iter %d / %d], [train loss %.5f]' % (
                 epoch, i + 1, len(train_loader), train_loss.avg
-            )
+            ))
 
 
 def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, visualize):
@@ -189,15 +189,15 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         val_visual = vutils.make_grid(val_visual, nrow=3, padding=5)
         writer.add_image(snapshot_name, val_visual)
 
-    print '--------------------------------------------------------------------'
-    print '[epoch %d], [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f]' % (
-        epoch, val_loss.avg, acc, acc_cls, mean_iu, fwavacc)
+    print('--------------------------------------------------------------------')
+    print('[epoch %d], [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f]' % (
+        epoch, val_loss.avg, acc, acc_cls, mean_iu, fwavacc))
 
-    print 'best record: [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f], [epoch %d]' % (
+    print('best record: [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f], [epoch %d]' % (
         train_args['best_record']['val_loss'], train_args['best_record']['acc'], train_args['best_record']['acc_cls'],
-        train_args['best_record']['mean_iu'], train_args['best_record']['fwavacc'], train_args['best_record']['epoch'])
+        train_args['best_record']['mean_iu'], train_args['best_record']['fwavacc'], train_args['best_record']['epoch']))
 
-    print '--------------------------------------------------------------------'
+    print('--------------------------------------------------------------------')
 
     writer.add_scalar('val_loss', val_loss.avg, epoch)
     writer.add_scalar('acc', acc, epoch)
