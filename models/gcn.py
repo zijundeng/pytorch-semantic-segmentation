@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch import nn
 from torchvision import models
 
-from utils import initialize_weights
+from ..utils import initialize_weights
 from .config import res152_path
 
 

@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from utils import initialize_weights
+from ..utils import initialize_weights
 
 
 class _EncoderBlock(nn.Module):

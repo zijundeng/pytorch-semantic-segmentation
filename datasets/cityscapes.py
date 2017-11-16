@@ -53,7 +53,7 @@ class CityScapes(data.Dataset):
     def __init__(self, quality, mode, joint_transform=None, transform=None, target_transform=None):
         self.imgs = make_dataset(quality, mode)
         if len(self.imgs) == 0:
-            raise (RuntimeError('Found 0 images, please check the data set'))
+            raise RuntimeError('Found 0 images, please check the data set')
         self.quality = quality
         self.mode = mode
         self.joint_transform = joint_transform
@@ -72,7 +72,7 @@ class CityScapes(data.Dataset):
 
         mask = np.array(mask)
         mask_copy = mask.copy()
-        for k, v in self.id_to_trainid.iteritems():
+        for k, v in self.id_to_trainid.items():
             mask_copy[mask == k] = v
         mask = Image.fromarray(mask_copy.astype(np.uint8))
 
