@@ -82,9 +82,9 @@ class Scale(object):
     def __call__(self, img, mask):
         assert img.size == mask.size
         w, h = img.size
-        if (w <= h and w == self.size) or (h <= w and h == self.size):
+        if (w >= h and w == self.size) or (h >= w and h == self.size):
             return img, mask
-        if w < h:
+        if w > h:
             ow = self.size
             oh = int(self.size * h / w)
             return img.resize((ow, oh), Image.BILINEAR), mask.resize((ow, oh), Image.NEAREST)
@@ -154,7 +154,7 @@ class RandomSized(object):
         return self.crop(*self.scale(img, mask))
 
 
-class SlidingCrop(object):
+class SlidingCropOld(object):
     def __init__(self, crop_size, stride_rate, ignore_label):
         self.crop_size = crop_size
         self.stride_rate = stride_rate
@@ -199,7 +199,7 @@ class SlidingCrop(object):
             return img, mask
 
 
-class SlidingCropTest(object):
+class SlidingCrop(object):
     def __init__(self, crop_size, stride_rate, ignore_label):
         self.crop_size = crop_size
         self.stride_rate = stride_rate
@@ -211,7 +211,7 @@ class SlidingCropTest(object):
         pad_w = max(self.crop_size - w, 0)
         img = np.pad(img, ((0, pad_h), (0, pad_w), (0, 0)), 'constant')
         mask = np.pad(mask, ((0, pad_h), (0, pad_w)), 'constant', constant_values=self.ignore_label)
-        return img, mask, pad_h, pad_w
+        return img, mask, h, w
 
     def __call__(self, img, mask):
         assert img.size == mask.size
@@ -226,20 +226,20 @@ class SlidingCropTest(object):
             stride = int(math.ceil(self.crop_size * self.stride_rate))
             h_step_num = int(math.ceil((h - self.crop_size) / float(stride))) + 1
             w_step_num = int(math.ceil((w - self.crop_size) / float(stride))) + 1
-            img_sublist, mask_sublist, slice_info_sublist = [], [], []
+            img_slices, mask_slices, slices_info = [], [], []
             for yy in xrange(h_step_num):
                 for xx in xrange(w_step_num):
                     sy, sx = yy * stride, xx * stride
                     ey, ex = sy + self.crop_size, sx + self.crop_size
                     img_sub = img[sy: ey, sx: ex, :]
                     mask_sub = mask[sy: ey, sx: ex]
-                    img_sub, mask_sub, pad_h, pad_w = self._pad(img_sub, mask_sub)
-                    img_sublist.append(Image.fromarray(img_sub.astype(np.uint8)).convert('RGB'))
-                    mask_sublist.append(Image.fromarray(mask_sub.astype(np.uint8)).convert('P'))
-                    slice_info_sublist.append([sy, ey, sx, ex, pad_h, pad_w])
-            return img_sublist, mask_sublist, slice_info_sublist
+                    img_sub, mask_sub, sub_h, sub_w = self._pad(img_sub, mask_sub)
+                    img_slices.append(Image.fromarray(img_sub.astype(np.uint8)).convert('RGB'))
+                    mask_slices.append(Image.fromarray(mask_sub.astype(np.uint8)).convert('P'))
+                    slices_info.append([sy, ey, sx, ex, sub_h, sub_w])
+            return img_slices, mask_slices, slices_info
         else:
-            img, mask, pad_h, pad_w = self._pad(img, mask)
+            img, mask, sub_h, sub_w = self._pad(img, mask)
             img = Image.fromarray(img.astype(np.uint8)).convert('RGB')
             mask = Image.fromarray(mask.astype(np.uint8)).convert('P')
-            return img, mask, []
+            return [img], [mask], [[0, sub_h, 0, sub_w, sub_h, sub_w]]
