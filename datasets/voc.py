@@ -64,7 +64,7 @@ class VOC(data.Dataset):
     def __init__(self, mode, joint_transform=None, sliding_crop=None, transform=None, target_transform=None):
         self.imgs = make_dataset(mode)
         if len(self.imgs) == 0:
-            raise (RuntimeError('Found 0 images, please check the data set'))
+            raise RuntimeError('Found 0 images, please check the data set')
         self.mode = mode
         self.joint_transform = joint_transform
         self.sliding_crop = sliding_crop

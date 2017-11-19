@@ -1,2 +1,2 @@
-import cityscapes
-import voc
+from . import cityscapes
+from . import voc
