@@ -47,7 +47,7 @@ def main():
         args['best_record'] = {'epoch': 0, 'iter': 0, 'val_loss': 1e10, 'acc': 0, 'acc_cls': 0, 'mean_iu': 0,
                                'fwavacc': 0}
     else:
-        print 'training resumes from ' + args['snapshot']
+        print('training resumes from ' + args['snapshot'])
         net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, args['snapshot'])))
         split_snapshot = args['snapshot'].split('_')
         curr_epoch = int(split_snapshot[1]) + 1
@@ -150,9 +150,9 @@ def train(train_loader, net, criterion, optimizer, curr_epoch, train_args, val_l
             writer.add_scalar('lr', optimizer.param_groups[1]['lr'], curr_iter)
 
             if (i + 1) % train_args['print_freq'] == 0:
-                print '[epoch %d], [iter %d / %d], [train main loss %.5f], [train aux loss %.5f]. [lr %.10f]' % (
+                print('[epoch %d], [iter %d / %d], [train main loss %.5f], [train aux loss %.5f]. [lr %.10f]' % (
                     curr_epoch, i + 1, len(train_loader), train_main_loss.avg, train_aux_loss.avg,
-                    optimizer.param_groups[1]['lr'])
+                    optimizer.param_groups[1]['lr']))
             if curr_iter >= train_args['max_iter']:
                 return
             if curr_iter % train_args['val_freq'] == 0:
@@ -199,7 +199,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, iter_num, train_args,
         gts_all[vi, :, :] /= count.cpu().numpy().astype(int)
         predictions_all[vi, :, :] = output.max(0)[1].squeeze_(0).cpu().numpy()
 
-        print 'validating: %d / %d' % (vi + 1, len(val_loader))
+        print('validating: %d / %d' % (vi + 1, len(val_loader)))
 
     acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, cityscapes.num_classes)
     if val_loss.avg < train_args['best_record']['val_loss']:
@@ -232,17 +232,17 @@ def validate(val_loader, net, criterion, optimizer, epoch, iter_num, train_args,
     val_visual = vutils.make_grid(val_visual, nrow=2, padding=5)
     writer.add_image(snapshot_name, val_visual)
 
-    print '-----------------------------------------------------------------------------------------------------------'
-    print '[epoch %d], [iter %d], [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f]' % (
-        epoch, iter_num, val_loss.avg, acc, acc_cls, mean_iu, fwavacc)
+    print('-----------------------------------------------------------------------------------------------------------')
+    print('[epoch %d], [iter %d], [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f]' % (
+        epoch, iter_num, val_loss.avg, acc, acc_cls, mean_iu, fwavacc))
 
-    print 'best record: [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f], [epoch %d], ' \
+    print('best record: [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f], [epoch %d], '
           '[iter %d]' % (train_args['best_record']['val_loss'], train_args['best_record']['acc'],
                          train_args['best_record']['acc_cls'], train_args['best_record']['mean_iu'],
                          train_args['best_record']['fwavacc'], train_args['best_record']['epoch'],
-                         train_args['best_record']['iter'])
+                         train_args['best_record']['iter']))
 
-    print '-----------------------------------------------------------------------------------------------------------'
+    print('-----------------------------------------------------------------------------------------------------------')
 
     writer.add_scalar('val_loss', val_loss.avg, epoch)
     writer.add_scalar('acc', acc, epoch)
