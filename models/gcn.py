@@ -4,7 +4,6 @@ from torch import nn
 from torchvision import models
 
 from ..utils import initialize_weights
-from .config import res152_path
 
 
 # many are borrowed from https://github.com/ycszen/pytorch-ss/blob/master/gcn.py
@@ -52,9 +51,7 @@ class GCN(nn.Module):
     def __init__(self, num_classes, input_size, pretrained=True):
         super(GCN, self).__init__()
         self.input_size = input_size
-        resnet = models.resnet152()
-        if pretrained:
-            resnet.load_state_dict(torch.load(res152_path))
+        resnet = models.resnet152(pretrained=pretrained)
         self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu)
         self.layer1 = nn.Sequential(resnet.maxpool, resnet.layer1)
         self.layer2 = resnet.layer2

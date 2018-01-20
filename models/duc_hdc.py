@@ -2,9 +2,6 @@ import torch
 from torch import nn
 from torchvision import models
 
-from .config import res152_path
-
-
 class _DenseUpsamplingConvModule(nn.Module):
     def __init__(self, down_factor, in_dim, num_classes):
         super(_DenseUpsamplingConvModule, self).__init__()
@@ -26,9 +23,7 @@ class ResNetDUC(nn.Module):
     # the size of image should be multiple of 8
     def __init__(self, num_classes, pretrained=True):
         super(ResNetDUC, self).__init__()
-        resnet = models.resnet152()
-        if pretrained:
-            resnet.load_state_dict(torch.load(res152_path))
+        resnet = models.resnet152(pretrained=pretrained)
         self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
         self.layer1 = resnet.layer1
         self.layer2 = resnet.layer2
