@@ -4,5 +4,7 @@ from .fcn32s import *
 from .fcn8s import *
 from .gcn import *
 from .psp_net import *
+from .psp_net_multihead import *
 from .seg_net import *
+from .seg_net_bayes import *
 from .u_net import *

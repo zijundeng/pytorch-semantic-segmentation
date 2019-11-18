@@ -9,9 +9,7 @@ from .config import vgg16_caffe_path
 class FCN16VGG(nn.Module):
     def __init__(self, num_classes, pretrained=True):
         super(FCN16VGG, self).__init__()
-        vgg = models.vgg16()
-        if pretrained:
-            vgg.load_state_dict(torch.load(vgg16_caffe_path))
+        vgg = models.vgg16(pretrained=pretrained)
         features, classifier = list(vgg.features.children()), list(vgg.classifier.children())
 
         features[0].padding = (100, 100)

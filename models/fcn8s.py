@@ -3,20 +3,22 @@ from torch import nn
 from torchvision import models
 
 from ..utils import get_upsampling_weight
-from .config import vgg16_path, vgg16_caffe_path
+from .config import vgg16_caffe_path
 
 
 # This is implemented in full accordance with the original one (https://github.com/shelhamer/fcn.berkeleyvision.org)
 class FCN8s(nn.Module):
     def __init__(self, num_classes, pretrained=True, caffe=False):
         super(FCN8s, self).__init__()
-        vgg = models.vgg16()
-        if pretrained:
-            if caffe:
-                # load the pretrained vgg16 used by the paper's author
-                vgg.load_state_dict(torch.load(vgg16_caffe_path))
-            else:
-                vgg.load_state_dict(torch.load(vgg16_path))
+
+        if pretrained and caffe:
+            vgg = models.vgg16()
+            # load the pretrained vgg16 used by the paper's author
+            vgg.load_state_dict(torch.load(vgg16_caffe_path))
+        else:
+            # if pretrained, load the weights from PyTorch model zoo
+            vgg = models.vgg16(pretrained=pretrained)
+
         features, classifier = list(vgg.features.children()), list(vgg.classifier.children())
 
         '''

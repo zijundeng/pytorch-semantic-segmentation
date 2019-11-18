@@ -1,7 +1,10 @@
 import random
 
 import numpy as np
-from skimage.filters import gaussian
+try:
+    from skimage.filters import gaussian
+except:
+    pass
 import torch
 from PIL import Image, ImageFilter
 

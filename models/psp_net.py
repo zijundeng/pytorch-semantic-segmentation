@@ -5,12 +5,11 @@ from torchvision import models
 
 from ..utils import initialize_weights
 from ..utils.misc import Conv2dDeformable
-from .config import res101_path
 
 
 class _PyramidPoolingModule(nn.Module):
     def __init__(self, in_dim, reduction_dim, setting):
-        super(_PyramidPoolingModule, self).__init__()
+        super().__init__()
         self.features = []
         for s in setting:
             self.features.append(nn.Sequential(
@@ -25,18 +24,16 @@ class _PyramidPoolingModule(nn.Module):
         x_size = x.size()
         out = [x]
         for f in self.features:
-            out.append(F.upsample(f(x), x_size[2:], mode='bilinear'))
+            out.append(F.interpolate(f(x), x_size[2:], mode='bilinear'))
         out = torch.cat(out, 1)
         return out
 
 
 class PSPNet(nn.Module):
     def __init__(self, num_classes, pretrained=True, use_aux=True):
-        super(PSPNet, self).__init__()
+        super().__init__()
         self.use_aux = use_aux
-        resnet = models.resnet101()
-        if pretrained:
-            resnet.load_state_dict(torch.load(res101_path))
+        resnet = models.resnet101(pretrained=pretrained)
         self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
         self.layer1, self.layer2, self.layer3, self.layer4 = resnet.layer1, resnet.layer2, resnet.layer3, resnet.layer4
 
@@ -66,7 +63,8 @@ class PSPNet(nn.Module):
 
         initialize_weights(self.ppm, self.final)
 
-    def forward(self, x):
+    def forward(self, image):
+        x = image
         x_size = x.size()
         x = self.layer0(x)
         x = self.layer1(x)
@@ -78,8 +76,8 @@ class PSPNet(nn.Module):
         x = self.ppm(x)
         x = self.final(x)
         if self.training and self.use_aux:
-            return F.upsample(x, x_size[2:], mode='bilinear'), F.upsample(aux, x_size[2:], mode='bilinear')
-        return F.upsample(x, x_size[2:], mode='bilinear')
+            return F.interpolate(x, x_size[2:], mode='bilinear'), F.interpolate(aux, x_size[2:], mode='bilinear')
+        return F.interpolate(x, x_size[2:], mode='bilinear')
 
 
 # just a try, not recommend to use
